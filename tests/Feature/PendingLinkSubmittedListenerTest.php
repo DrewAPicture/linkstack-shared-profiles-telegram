@@ -11,8 +11,8 @@ use Mockery;
 use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use WerdsWords\LinkStack\SharedProfiles\Events\PendingLinkSubmitted;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Contracts\NotifierContract;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\ServiceProvider;
-use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\NotificationService;
 use WerdsWords\LinkStack\SharedProfiles\ServiceProvider as CoreServiceProvider;
 
 #[CoversClass(ServiceProvider::class)]
@@ -29,6 +29,8 @@ final class PendingLinkSubmittedListenerTest extends TestCase
 
     protected function defineEnvironment($app): void
     {
+        $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+
         $app['config']->set('database.default', 'testing');
         $app['config']->set('database.connections.testing', [
             'driver' => 'sqlite',
@@ -52,37 +54,59 @@ final class PendingLinkSubmittedListenerTest extends TestCase
             $table->timestamps();
         });
 
-        Schema::create('telegram_managers', function (Blueprint $table) {
+        Schema::create('provider_managers', function (Blueprint $table) {
             $table->id();
-            $table->string('telegram_id')->unique();
+            $table->string('provider');
+            $table->string('external_id');
             $table->unsignedBigInteger('profile_id');
-            $table->enum('role', ['owner', 'moderator'])->default('moderator');
-            $table->unsignedBigInteger('added_by')->nullable();
+            $table->string('role')->default('moderator');
+            $table->string('added_by')->nullable();
             $table->timestamp('created_at')->useCurrent();
         });
 
+        Schema::create('provider_settings', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('profile_id');
+            $table->string('provider');
+            $table->text('settings');
+            $table->unique(['profile_id', 'provider']);
+        });
+
         $this->beforeApplicationDestroyed(function () {
-            Schema::dropIfExists('telegram_managers');
+            Schema::dropIfExists('provider_settings');
+            Schema::dropIfExists('provider_managers');
             Schema::dropIfExists('users');
         });
     }
 
+    protected function tearDown(): void
+    {
+        CoreServiceProvider::flushNotifiers();
+        parent::tearDown();
+    }
+
     public function testListenerCallsNotifyModeratorsWhenEventDispatched(): void
     {
-        $mock = Mockery::mock(NotificationService::class);
+        // Replace the notifier registered during boot with a mock so we can
+        // assert the fanout mechanism calls through correctly.
+        CoreServiceProvider::flushNotifiers();
+
+        $mock = Mockery::mock(NotifierContract::class);
         $mock->shouldReceive('notifyModerators')
             ->once()
             ->with(1, 42, 'https://example.com', 'My Link');
-        $this->app->instance(NotificationService::class, $mock);
+        CoreServiceProvider::registerNotifier($mock);
 
         event(new PendingLinkSubmitted(1, 42, 'https://example.com', 'My Link'));
     }
 
     public function testListenerIsNotCalledWhenEventIsNotDispatched(): void
     {
-        $mock = Mockery::mock(NotificationService::class);
+        CoreServiceProvider::flushNotifiers();
+
+        $mock = Mockery::mock(NotifierContract::class);
         $mock->shouldReceive('notifyModerators')->never();
-        $this->app->instance(NotificationService::class, $mock);
+        CoreServiceProvider::registerNotifier($mock);
 
         $this->assertTrue(true);
     }

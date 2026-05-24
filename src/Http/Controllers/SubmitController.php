@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers;
 
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
-use SensitiveParameter;
 use WerdsWords\LinkStack\SharedProfiles\Events\PendingLinkSubmitted;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderSetting;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Support\AuthReplayGuard;
 
 class SubmitController extends Controller
 {
@@ -55,18 +55,25 @@ class SubmitController extends Controller
         $chatData = json_decode($chatJson, true);
         $chatId = (string) ($chatData['id'] ?? '');
 
-        /** @var class-string<Model> $userModel */
-        $userModel = config('auth.providers.users.model');
-        $profile = $userModel::where('telegram_group_chat_id', $chatId)->first();
+        $rawProfileId = DB::table('telegram_group_chats')->where('chat_id', $chatId)->value('profile_id');
 
-        if (! $profile) {
+        if (! is_numeric($rawProfileId)) {
             abort(404);
         }
 
-        /** @var int $profileId */
-        $profileId = $profile->getKey();
+        $profileId = (int) $rawProfileId;
 
-        $botToken = $this->resolveToken($profileId);
+        $setting = ProviderSetting::forProvider('telegram')
+            ->where('profile_id', $profileId)
+            ->first();
+
+        $settings = $setting?->settings ?? [];
+        $rawToken = $settings['bot_token'] ?? null;
+
+        /** @var string $botToken */
+        $botToken = (is_string($rawToken) && $rawToken !== '')
+            ? $rawToken
+            : config('linkstack-shared-profiles-telegram.bot_token');
 
         $secret = hash_hmac('sha256', 'WebAppData', $botToken, true);
 
@@ -89,7 +96,7 @@ class SubmitController extends Controller
         $ttl = config('linkstack-shared-profiles-telegram.auth_date_ttl', 300);
         $authDate = isset($params['auth_date']) ? (int) $params['auth_date'] : 0;
 
-        if (time() - $authDate > $ttl) {
+        if (AuthReplayGuard::isStale($authDate, $ttl)) {
             return response()->json(['error' => 'Token expired'], 403);
         }
 
@@ -122,21 +129,5 @@ class SubmitController extends Controller
         }
 
         return response()->json(['status' => 'queued'], 201);
-    }
-
-    /**
-     * Resolve the bot token for a profile: use the per-profile value when set,
-     * fall back to the global config otherwise.
-     */
-    private function resolveToken(#[SensitiveParameter] int $profileId): string
-    {
-        $perProfile = DB::table('users')->where('id', $profileId)->value('telegram_bot_token');
-
-        /** @var string $token */
-        $token = is_string($perProfile) && $perProfile !== ''
-            ? $perProfile
-            : config('linkstack-shared-profiles-telegram.bot_token');
-
-        return $token;
     }
 }

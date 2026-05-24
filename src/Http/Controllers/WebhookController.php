@@ -4,44 +4,36 @@ declare(strict_types=1);
 
 namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers;
 
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
-use SensitiveParameter;
-use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Models\Manager;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Controllers\AbstractWebhookController;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderManager;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderSetting;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\MessagingService;
 
-class WebhookController extends Controller
+class WebhookController extends AbstractWebhookController
 {
     public function __construct(private readonly MessagingService $messagingService) {}
 
-    public function handle(Request $request): JsonResponse
+    protected function verifySignature(Request $request): bool
     {
-        /** @var string|null $secret */
         $secret = config('linkstack-shared-profiles-telegram.webhook_secret');
 
-        if ($request->header('X-Telegram-Bot-Api-Secret-Token') !== $secret) {
-            return response()->json(['error' => 'Forbidden'], 403);
-        }
-
-        /** @var array<string, mixed> $update */
-        $update = $request->all();
-
-        if (isset($update['message']) && is_array($update['message'])) {
-            $this->handleMessage($update['message']);
-        } elseif (isset($update['callback_query']) && is_array($update['callback_query'])) {
-            $this->handleCallbackQuery($update['callback_query']);
-        }
-
-        return response()->json(['ok' => true]);
+        return $request->header('X-Telegram-Bot-Api-Secret-Token') === $secret;
     }
 
-    /**
-     * @param  array<string, mixed>  $message
-     */
-    private function handleMessage(array $message): void
+    /** @param array<string, mixed> $payload */
+    protected function isMessage(array $payload): bool
     {
+        return isset($payload['message']) && is_array($payload['message']);
+    }
+
+    /** @param array<string, mixed> $payload */
+    protected function handleMessage(array $payload): void
+    {
+        /** @var array<string, mixed> $message */
+        $message = $payload['message'];
+
         if (($message['text'] ?? '') !== '/auth') {
             return;
         }
@@ -50,13 +42,17 @@ class WebhookController extends Controller
         $from = is_array($message['from'] ?? null) ? $message['from'] : [];
         $telegramId = (string) ($from['id'] ?? '');
 
-        $manager = Manager::where('telegram_id', $telegramId)->first();
+        $manager = ProviderManager::forProvider('telegram')
+            ->where('external_id', $telegramId)
+            ->first();
+
         if (! $manager) {
             return;
         }
 
         $loginUrl = config('app.url').'/telegram-auth/'.$manager->profile_id;
         $botToken = $this->resolveToken($manager->profile_id);
+
         /** @var string $appName */
         $appName = config('app.name', 'LinkStack');
         $buttonLabel = sprintf('Log in to %s', $appName);
@@ -69,11 +65,16 @@ class WebhookController extends Controller
         );
     }
 
-    /**
-     * @param  array<string, mixed>  $query
-     */
-    private function handleCallbackQuery(array $query): void
+    /** @param array<string, mixed> $payload */
+    protected function handleInteraction(array $payload): void
     {
+        if (! isset($payload['callback_query']) || ! is_array($payload['callback_query'])) {
+            return;
+        }
+
+        /** @var array<string, mixed> $query */
+        $query = $payload['callback_query'];
+
         /** @var string $globalToken */
         $globalToken = config('linkstack-shared-profiles-telegram.bot_token');
         $rawQueryId = $query['id'] ?? '';
@@ -101,7 +102,8 @@ class WebhookController extends Controller
 
         $profileId = (int) $userId;
 
-        $manager = Manager::where('telegram_id', $telegramId)
+        $manager = ProviderManager::forProvider('telegram')
+            ->where('external_id', $telegramId)
             ->where('profile_id', $profileId)
             ->first();
 
@@ -135,13 +137,18 @@ class WebhookController extends Controller
         }
     }
 
-    private function resolveToken(#[SensitiveParameter] int $profileId): string
+    private function resolveToken(int $profileId): string
     {
-        $perProfile = DB::table('users')->where('id', $profileId)->value('telegram_bot_token');
+        $setting = ProviderSetting::forProvider('telegram')
+            ->where('profile_id', $profileId)
+            ->first();
+
+        $settings = $setting?->settings ?? [];
+        $rawToken = $settings['bot_token'] ?? null;
 
         /** @var string $token */
-        $token = is_string($perProfile) && $perProfile !== ''
-            ? $perProfile
+        $token = (is_string($rawToken) && $rawToken !== '')
+            ? $rawToken
             : config('linkstack-shared-profiles-telegram.bot_token');
 
         return $token;

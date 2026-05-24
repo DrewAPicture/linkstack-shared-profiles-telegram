@@ -68,18 +68,26 @@ final class WebhookControllerTest extends TestCase
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('telegram_bot_token')->nullable();
             $table->timestamps();
         });
 
-        Schema::create('telegram_managers', function (Blueprint $table) {
+        Schema::create('provider_managers', function (Blueprint $table) {
             $table->id();
-            $table->string('telegram_id')->unique();
+            $table->string('provider');
+            $table->string('external_id');
             $table->unsignedBigInteger('profile_id');
             $table->foreign('profile_id')->references('id')->on('users')->onDelete('cascade');
-            $table->enum('role', ['owner', 'moderator'])->default('moderator');
-            $table->unsignedBigInteger('added_by')->nullable();
+            $table->string('role')->default('moderator');
+            $table->string('added_by')->nullable();
             $table->timestamp('created_at')->useCurrent();
+        });
+
+        Schema::create('provider_settings', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('profile_id');
+            $table->string('provider');
+            $table->text('settings');
+            $table->unique(['profile_id', 'provider']);
         });
 
         Schema::create('links', function (Blueprint $table) {
@@ -98,7 +106,8 @@ final class WebhookControllerTest extends TestCase
 
         $this->beforeApplicationDestroyed(function () {
             Schema::dropIfExists('links');
-            Schema::dropIfExists('telegram_managers');
+            Schema::dropIfExists('provider_settings');
+            Schema::dropIfExists('provider_managers');
             Schema::dropIfExists('users');
         });
     }
@@ -114,10 +123,12 @@ final class WebhookControllerTest extends TestCase
 
     private function createManager(int $profileId, string $telegramId): void
     {
-        DB::table('telegram_managers')->insert([
-            'telegram_id' => $telegramId,
+        DB::table('provider_managers')->insert([
+            'provider' => 'telegram',
+            'external_id' => $telegramId,
             'profile_id' => $profileId,
             'role' => 'moderator',
+            'created_at' => now(),
         ]);
     }
 
@@ -246,7 +257,7 @@ final class WebhookControllerTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // handleCallbackQuery() — approve / reject
+    // handleInteraction() — approve / reject callback queries
     // -------------------------------------------------------------------------
 
     public function testApproveCallbackPublishesLink(): void

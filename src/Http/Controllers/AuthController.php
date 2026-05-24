@@ -10,10 +10,11 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
 use Laravel\Socialite\Facades\Socialite;
 use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse;
-use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Models\Manager;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderManager;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderSetting;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Support\AuthReplayGuard;
 
 class AuthController extends Controller
 {
@@ -39,7 +40,9 @@ class AuthController extends Controller
 
         $social = Socialite::driver('telegram')->user();
 
-        $manager = Manager::where('telegram_id', (string) $social->getId())->first();
+        $manager = ProviderManager::forProvider('telegram')
+            ->where('external_id', (string) $social->getId())
+            ->first();
 
         if (! $manager) {
             return redirect()->route('login')->withErrors(['telegram' => 'Not authorised.']);
@@ -82,7 +85,9 @@ class AuthController extends Controller
 
         $telegramId = (string) ($tgUser['id'] ?? '');
 
-        $manager = Manager::where('telegram_id', $telegramId)->first();
+        $manager = ProviderManager::forProvider('telegram')
+            ->where('external_id', $telegramId)
+            ->first();
 
         if (! $manager) {
             return response()->json(['error' => 'Not authorised'], 403);
@@ -113,7 +118,7 @@ class AuthController extends Controller
 
         $authDate = isset($params['auth_date']) ? (int) $params['auth_date'] : 0;
 
-        if (time() - $authDate > $ttl) {
+        if (AuthReplayGuard::isStale($authDate, $ttl)) {
             return response()->json(['error' => 'Token expired'], 403);
         }
 
@@ -123,17 +128,18 @@ class AuthController extends Controller
         return response()->json(['redirect' => '/studio/moderation']);
     }
 
-    /**
-     * Resolve the bot token for a profile: use the per-profile value when set,
-     * fall back to the global config otherwise.
-     */
     private function resolveToken(int $profileId): string
     {
-        $perProfile = DB::table('users')->where('id', $profileId)->value('telegram_bot_token');
+        $setting = ProviderSetting::forProvider('telegram')
+            ->where('profile_id', $profileId)
+            ->first();
+
+        $settings = $setting?->settings ?? [];
+        $rawToken = $settings['bot_token'] ?? null;
 
         /** @var string $token */
-        $token = is_string($perProfile) && $perProfile !== ''
-            ? $perProfile
+        $token = (is_string($rawToken) && $rawToken !== '')
+            ? $rawToken
             : config('linkstack-shared-profiles-telegram.bot_token');
 
         return $token;
