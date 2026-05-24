@@ -9305,23 +9305,22 @@
         },
         {
             "name": "werdswords/linkstack-shared-profiles",
-            "version": "dev-feature/decouple-providers",
-            "version_normalized": "dev-feature/decouple-providers",
+            "version": "dev-main",
+            "version_normalized": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/DrewAPicture/linkstack-shared-profiles.git",
-                "reference": "e4a6f61ec072dff8a9c29eed65958b8cc65ea602"
+                "reference": "e6d9cc29f6c90a065ad15cc8aacb9cafb57730c8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/DrewAPicture/linkstack-shared-profiles/zipball/e4a6f61ec072dff8a9c29eed65958b8cc65ea602",
-                "reference": "e4a6f61ec072dff8a9c29eed65958b8cc65ea602",
+                "url": "https://api.github.com/repos/DrewAPicture/linkstack-shared-profiles/zipball/e6d9cc29f6c90a065ad15cc8aacb9cafb57730c8",
+                "reference": "e6d9cc29f6c90a065ad15cc8aacb9cafb57730c8",
                 "shasum": ""
             },
             "require": {
                 "laravel/framework": "^10.0",
-                "php": "^8.2",
-                "socialiteproviders/telegram": "^4.0"
+                "php": "^8.2"
             },
             "require-dev": {
                 "larastan/larastan": "^2.0",
@@ -9330,7 +9329,8 @@
                 "phpstan/phpstan": "^1.12",
                 "phpunit/phpunit": "^10.5"
             },
-            "time": "2026-05-24T15:19:00+00:00",
+            "time": "2026-05-24T16:28:42+00:00",
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "laravel": {
@@ -9369,9 +9369,9 @@
             "license": [
                 "MIT"
             ],
-            "description": "Telegram-authenticated shared profile management for LinkStack",
+            "description": "Shared profile management for LinkStack",
             "support": {
-                "source": "https://github.com/DrewAPicture/linkstack-shared-profiles/tree/feature/decouple-providers",
+                "source": "https://github.com/DrewAPicture/linkstack-shared-profiles/tree/main",
                 "issues": "https://github.com/DrewAPicture/linkstack-shared-profiles/issues"
             },
             "install-path": "../werdswords/linkstack-shared-profiles"

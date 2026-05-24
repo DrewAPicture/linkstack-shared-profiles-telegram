@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace WerdsWords\LinkStack\SharedProfiles\Models;
+namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -15,8 +15,10 @@ use Illuminate\Support\Carbon;
  * @property int|null $added_by
  * @property Carbon $created_at
  */
-class TelegramManager extends Model
+class Manager extends Model
 {
+    protected $table = 'telegram_managers';
+
     public $timestamps = false;
 
     protected $fillable = [

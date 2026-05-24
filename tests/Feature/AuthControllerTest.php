@@ -15,13 +15,13 @@ use Mockery;
 use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use SensitiveParameter;
-use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers\TelegramAuthController;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers\AuthController;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\ServiceProvider;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Tests\Support\Models\User;
 use WerdsWords\LinkStack\SharedProfiles\ServiceProvider as CoreServiceProvider;
 
-#[CoversClass(TelegramAuthController::class)]
-final class TelegramAuthControllerTest extends TestCase
+#[CoversClass(AuthController::class)]
+final class AuthControllerTest extends TestCase
 {
     private const BOT_TOKEN = 'test-bot-token';
 

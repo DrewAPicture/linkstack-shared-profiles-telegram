@@ -12,7 +12,7 @@ use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use WerdsWords\LinkStack\SharedProfiles\Events\PendingLinkSubmitted;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\ServiceProvider;
-use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\TelegramNotificationService;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\NotificationService;
 use WerdsWords\LinkStack\SharedProfiles\ServiceProvider as CoreServiceProvider;
 
 #[CoversClass(ServiceProvider::class)]
@@ -41,9 +41,6 @@ final class PendingLinkSubmittedListenerTest extends TestCase
         $app['config']->set('services.telegram.redirect', 'https://example.com/callback');
 
         $app['config']->set('linkstack-shared-profiles-telegram.bot_token', 'test-token');
-        // Keep in sync with linkstack-shared-profiles-telegram.bot_token so the
-        // core package's transitional listener does not throw a TypeError.
-        $app['config']->set('linkstack-shared-profiles.bot_token', 'test-token');
     }
 
     protected function defineDatabaseMigrations(): void
@@ -72,20 +69,20 @@ final class PendingLinkSubmittedListenerTest extends TestCase
 
     public function testListenerCallsNotifyModeratorsWhenEventDispatched(): void
     {
-        $mock = Mockery::mock(TelegramNotificationService::class);
+        $mock = Mockery::mock(NotificationService::class);
         $mock->shouldReceive('notifyModerators')
             ->once()
             ->with(1, 42, 'https://example.com', 'My Link');
-        $this->app->instance(TelegramNotificationService::class, $mock);
+        $this->app->instance(NotificationService::class, $mock);
 
         event(new PendingLinkSubmitted(1, 42, 'https://example.com', 'My Link'));
     }
 
     public function testListenerIsNotCalledWhenEventIsNotDispatched(): void
     {
-        $mock = Mockery::mock(TelegramNotificationService::class);
+        $mock = Mockery::mock(NotificationService::class);
         $mock->shouldReceive('notifyModerators')->never();
-        $this->app->instance(TelegramNotificationService::class, $mock);
+        $this->app->instance(NotificationService::class, $mock);
 
         $this->assertTrue(true);
     }

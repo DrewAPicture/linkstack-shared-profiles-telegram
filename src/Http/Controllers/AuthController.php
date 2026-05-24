@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace WerdsWords\LinkStack\SharedProfiles\Http\Controllers;
+namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Laravel\Socialite\Facades\Socialite;
 use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse;
-use WerdsWords\LinkStack\SharedProfiles\Models\TelegramManager;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Models\Manager;
 
-class TelegramAuthController extends Controller
+class AuthController extends Controller
 {
     /**
      * Approach A: initiate the Telegram Login Widget OAuth redirect.
@@ -39,7 +39,7 @@ class TelegramAuthController extends Controller
 
         $social = Socialite::driver('telegram')->user();
 
-        $manager = TelegramManager::where('telegram_id', (string) $social->getId())->first();
+        $manager = Manager::where('telegram_id', (string) $social->getId())->first();
 
         if (! $manager) {
             return redirect()->route('login')->withErrors(['telegram' => 'Not authorised.']);
@@ -82,7 +82,7 @@ class TelegramAuthController extends Controller
 
         $telegramId = (string) ($tgUser['id'] ?? '');
 
-        $manager = TelegramManager::where('telegram_id', $telegramId)->first();
+        $manager = Manager::where('telegram_id', $telegramId)->first();
 
         if (! $manager) {
             return response()->json(['error' => 'Not authorised'], 403);
@@ -109,7 +109,7 @@ class TelegramAuthController extends Controller
         }
 
         /** @var int $ttl */
-        $ttl = config('linkstack-shared-profiles.auth_date_ttl', 300);
+        $ttl = config('linkstack-shared-profiles-telegram.auth_date_ttl', 300);
 
         $authDate = isset($params['auth_date']) ? (int) $params['auth_date'] : 0;
 
@@ -134,7 +134,7 @@ class TelegramAuthController extends Controller
         /** @var string $token */
         $token = is_string($perProfile) && $perProfile !== ''
             ? $perProfile
-            : config('linkstack-shared-profiles.bot_token');
+            : config('linkstack-shared-profiles-telegram.bot_token');
 
         return $token;
     }

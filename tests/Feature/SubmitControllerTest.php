@@ -13,13 +13,13 @@ use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use SensitiveParameter;
 use WerdsWords\LinkStack\SharedProfiles\Events\PendingLinkSubmitted;
-use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers\TelegramSubmitController;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers\SubmitController;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\ServiceProvider;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Tests\Support\Models\User;
 use WerdsWords\LinkStack\SharedProfiles\ServiceProvider as CoreServiceProvider;
 
-#[CoversClass(TelegramSubmitController::class)]
-final class TelegramSubmitControllerTest extends TestCase
+#[CoversClass(SubmitController::class)]
+final class SubmitControllerTest extends TestCase
 {
     private const BOT_TOKEN = 'test-bot-token';
 
@@ -59,10 +59,6 @@ final class TelegramSubmitControllerTest extends TestCase
         $app['config']->set('linkstack-shared-profiles-telegram.auth_date_ttl', 300);
         $app['config']->set('linkstack-shared-profiles-telegram.default_button_id', self::DEFAULT_BUTTON_ID);
         $app['config']->set('linkstack-shared-profiles.auto_approve', false);
-        // Keep in sync with linkstack-shared-profiles-telegram.bot_token so the
-        // core package's transitional listener (present until Phase 2 lands on main)
-        // does not throw a TypeError when resolving the fallback token.
-        $app['config']->set('linkstack-shared-profiles.bot_token', self::BOT_TOKEN);
     }
 
     protected function defineDatabaseMigrations(): void

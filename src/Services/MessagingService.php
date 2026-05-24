@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace WerdsWords\LinkStack\SharedProfiles\Services;
+namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services;
 
 use Illuminate\Support\Facades\Http;
 use SensitiveParameter;
 
-class TelegramMessagingService
+class MessagingService
 {
     private const API_BASE = 'https://api.telegram.org';
 

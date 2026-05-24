@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace WerdsWords\LinkStack\SharedProfiles\Http\Controllers;
+namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers;
 
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 use SensitiveParameter;
 use WerdsWords\LinkStack\SharedProfiles\Events\PendingLinkSubmitted;
 
-class TelegramSubmitController extends Controller
+class SubmitController extends Controller
 {
     /**
      * Serve the contributor Mini App view.
@@ -86,7 +86,7 @@ class TelegramSubmitController extends Controller
         }
 
         /** @var int $ttl */
-        $ttl = config('linkstack-shared-profiles.auth_date_ttl', 300);
+        $ttl = config('linkstack-shared-profiles-telegram.auth_date_ttl', 300);
         $authDate = isset($params['auth_date']) ? (int) $params['auth_date'] : 0;
 
         if (time() - $authDate > $ttl) {
@@ -102,7 +102,7 @@ class TelegramSubmitController extends Controller
         $status = $autoApprove ? 'published' : 'pending';
 
         /** @var int $defaultButtonId */
-        $defaultButtonId = config('linkstack-shared-profiles.default_button_id');
+        $defaultButtonId = config('linkstack-shared-profiles-telegram.default_button_id');
 
         $linkId = DB::table('links')->insertGetId([
             'user_id' => $profileId,
@@ -135,7 +135,7 @@ class TelegramSubmitController extends Controller
         /** @var string $token */
         $token = is_string($perProfile) && $perProfile !== ''
             ? $perProfile
-            : config('linkstack-shared-profiles.bot_token');
+            : config('linkstack-shared-profiles-telegram.bot_token');
 
         return $token;
     }

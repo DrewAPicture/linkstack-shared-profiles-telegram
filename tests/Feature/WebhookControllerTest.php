@@ -12,14 +12,14 @@ use Laravel\Socialite\SocialiteServiceProvider;
 use Mockery;
 use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
-use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers\TelegramWebhookController;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers\WebhookController;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\ServiceProvider;
-use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\TelegramMessagingService;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\MessagingService;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Tests\Support\Models\User;
 use WerdsWords\LinkStack\SharedProfiles\ServiceProvider as CoreServiceProvider;
 
-#[CoversClass(TelegramWebhookController::class)]
-final class TelegramWebhookControllerTest extends TestCase
+#[CoversClass(WebhookController::class)]
+final class WebhookControllerTest extends TestCase
 {
     private const WEBHOOK_SECRET = 'test-webhook-secret';
 
@@ -199,12 +199,12 @@ final class TelegramWebhookControllerTest extends TestCase
         $user = $this->createUser();
         $this->createManager($user->id, '12345678');
 
-        $mock = Mockery::mock(TelegramMessagingService::class);
+        $mock = Mockery::mock(MessagingService::class);
         $mock->shouldReceive('sendMessageWithKeyboard')
             ->once()
             ->withArgs(fn ($token, $chatId, $text, $keyboard) => $chatId === '12345678'
                 && str_contains($keyboard[0][0]['url'] ?? '', '/telegram-auth/'.$user->id));
-        $this->app->instance(TelegramMessagingService::class, $mock);
+        $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->messageUpdate('/auth'))->assertStatus(200);
     }
@@ -215,20 +215,20 @@ final class TelegramWebhookControllerTest extends TestCase
         $user = $this->createUser();
         $this->createManager($user->id, '12345678');
 
-        $mock = Mockery::mock(TelegramMessagingService::class);
+        $mock = Mockery::mock(MessagingService::class);
         $mock->shouldReceive('sendMessageWithKeyboard')
             ->once()
             ->withArgs(fn ($token, $chatId, $text, $keyboard) => ($keyboard[0][0]['text'] ?? '') === 'Log in to MyStack');
-        $this->app->instance(TelegramMessagingService::class, $mock);
+        $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->messageUpdate('/auth'))->assertStatus(200);
     }
 
     public function testAuthCommandFromUnknownUserIsIgnored(): void
     {
-        $mock = Mockery::mock(TelegramMessagingService::class);
+        $mock = Mockery::mock(MessagingService::class);
         $mock->shouldReceive('sendMessageWithKeyboard')->never();
-        $this->app->instance(TelegramMessagingService::class, $mock);
+        $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->messageUpdate('/auth', '9999999'))->assertStatus(200);
     }
@@ -238,9 +238,9 @@ final class TelegramWebhookControllerTest extends TestCase
         $user = $this->createUser();
         $this->createManager($user->id, '12345678');
 
-        $mock = Mockery::mock(TelegramMessagingService::class);
+        $mock = Mockery::mock(MessagingService::class);
         $mock->shouldReceive('sendMessageWithKeyboard')->never();
-        $this->app->instance(TelegramMessagingService::class, $mock);
+        $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->messageUpdate('hello'))->assertStatus(200);
     }
@@ -255,12 +255,12 @@ final class TelegramWebhookControllerTest extends TestCase
         $this->createManager($user->id, '12345678');
         $linkId = $this->createLink($user->id);
 
-        $mock = Mockery::mock(TelegramMessagingService::class);
+        $mock = Mockery::mock(MessagingService::class);
         $mock->shouldReceive('answerCallbackQuery')->once()->andReturn(true);
         $mock->shouldReceive('editMessageText')
             ->once()
             ->withArgs(fn ($token, $chatId, $messageId, $text) => str_contains($text, '✅'));
-        $this->app->instance(TelegramMessagingService::class, $mock);
+        $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->callbackUpdate("approve:{$linkId}"))->assertStatus(200);
 
@@ -273,12 +273,12 @@ final class TelegramWebhookControllerTest extends TestCase
         $this->createManager($user->id, '12345678');
         $linkId = $this->createLink($user->id);
 
-        $mock = Mockery::mock(TelegramMessagingService::class);
+        $mock = Mockery::mock(MessagingService::class);
         $mock->shouldReceive('answerCallbackQuery')->once()->andReturn(true);
         $mock->shouldReceive('editMessageText')
             ->once()
             ->withArgs(fn ($token, $chatId, $messageId, $text) => str_contains($text, '❌'));
-        $this->app->instance(TelegramMessagingService::class, $mock);
+        $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->callbackUpdate("reject:{$linkId}"))->assertStatus(200);
 
@@ -292,10 +292,10 @@ final class TelegramWebhookControllerTest extends TestCase
         $this->createManager($other->id, '12345678'); // moderator for OTHER profile
         $linkId = $this->createLink($user->id);       // link belongs to $user
 
-        $mock = Mockery::mock(TelegramMessagingService::class);
+        $mock = Mockery::mock(MessagingService::class);
         $mock->shouldReceive('answerCallbackQuery')->once()->andReturn(true);
         $mock->shouldReceive('editMessageText')->never();
-        $this->app->instance(TelegramMessagingService::class, $mock);
+        $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->callbackUpdate("approve:{$linkId}"))->assertStatus(200);
 
@@ -304,10 +304,10 @@ final class TelegramWebhookControllerTest extends TestCase
 
     public function testUnknownCallbackFormatAnswersAndReturns(): void
     {
-        $mock = Mockery::mock(TelegramMessagingService::class);
+        $mock = Mockery::mock(MessagingService::class);
         $mock->shouldReceive('answerCallbackQuery')->once()->andReturn(true);
         $mock->shouldReceive('editMessageText')->never();
-        $this->app->instance(TelegramMessagingService::class, $mock);
+        $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->callbackUpdate('unknown:format'))->assertStatus(200);
     }

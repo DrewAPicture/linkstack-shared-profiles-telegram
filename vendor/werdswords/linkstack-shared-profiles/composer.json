@@ -1,12 +1,11 @@
 {
   "name": "werdswords/linkstack-shared-profiles",
-  "description": "Telegram-authenticated shared profile management for LinkStack",
+  "description": "Shared profile management for LinkStack",
   "type": "library",
   "license": "MIT",
   "require": {
     "php": "^8.2",
-    "laravel/framework": "^10.0",
-    "socialiteproviders/telegram": "^4.0"
+    "laravel/framework": "^10.0"
   },
   "autoload": {
     "psr-4": {

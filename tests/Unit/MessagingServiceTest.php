@@ -9,11 +9,11 @@ use Laravel\Socialite\SocialiteServiceProvider;
 use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\ServiceProvider;
-use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\TelegramMessagingService;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\MessagingService;
 use WerdsWords\LinkStack\SharedProfiles\ServiceProvider as CoreServiceProvider;
 
-#[CoversClass(TelegramMessagingService::class)]
-final class TelegramMessagingServiceTest extends TestCase
+#[CoversClass(MessagingService::class)]
+final class MessagingServiceTest extends TestCase
 {
     protected function getPackageProviders($app): array
     {
@@ -37,13 +37,13 @@ final class TelegramMessagingServiceTest extends TestCase
 
     public function testServiceIsResolvableFromContainer(): void
     {
-        $this->assertInstanceOf(TelegramMessagingService::class, app(TelegramMessagingService::class));
+        $this->assertInstanceOf(MessagingService::class, app(MessagingService::class));
     }
 
     public function testServiceIsBoundAsSingleton(): void
     {
-        $a = app(TelegramMessagingService::class);
-        $b = app(TelegramMessagingService::class);
+        $a = app(MessagingService::class);
+        $b = app(MessagingService::class);
 
         $this->assertSame($a, $b);
     }
@@ -56,7 +56,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $service->sendMessage('my-bot-token', '12345678', 'Hello!');
 
         Http::assertSent(
@@ -68,7 +68,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $service->sendMessage('my-bot-token', '12345678', 'Hello!');
 
         Http::assertSent(
@@ -80,7 +80,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $result = $service->sendMessage('my-bot-token', '12345678', 'Hello!');
 
         $this->assertTrue($result);
@@ -90,7 +90,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Bad Request'], 400)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $result = $service->sendMessage('my-bot-token', '12345678', 'Hello!');
 
         $this->assertFalse($result);
@@ -100,7 +100,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response([], 500)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $result = $service->sendMessage('my-bot-token', '12345678', 'Hello!');
 
         $this->assertFalse($result);
@@ -114,7 +114,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $service->sendMessageWithKeyboard('my-bot-token', '12345678', 'Pick one:', []);
 
         Http::assertSent(
@@ -128,7 +128,7 @@ final class TelegramMessagingServiceTest extends TestCase
 
         $keyboard = [[['text' => '✅ Approve', 'callback_data' => 'approve:1']]];
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $service->sendMessageWithKeyboard('my-bot-token', '12345678', 'Pick one:', $keyboard);
 
         Http::assertSent(function ($request) use ($keyboard) {
@@ -142,7 +142,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $result = $service->sendMessageWithKeyboard('my-bot-token', '12345678', 'Pick one:', []);
 
         $this->assertTrue($result);
@@ -152,7 +152,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => false], 400)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $result = $service->sendMessageWithKeyboard('my-bot-token', '12345678', 'Pick one:', []);
 
         $this->assertFalse($result);
@@ -166,7 +166,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $service->editMessageText('my-bot-token', '12345678', 99, 'Updated text');
 
         Http::assertSent(
@@ -178,7 +178,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $service->editMessageText('my-bot-token', '12345678', 99, 'Updated text');
 
         Http::assertSent(function ($request) {
@@ -193,7 +193,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $result = $service->editMessageText('my-bot-token', '12345678', 99, 'Updated text');
 
         $this->assertTrue($result);
@@ -203,7 +203,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => false], 400)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $result = $service->editMessageText('my-bot-token', '12345678', 99, 'Updated text');
 
         $this->assertFalse($result);
@@ -217,7 +217,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $service->answerCallbackQuery('my-bot-token', 'query-id-abc');
 
         Http::assertSent(
@@ -229,7 +229,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $service->answerCallbackQuery('my-bot-token', 'query-id-abc');
 
         Http::assertSent(
@@ -241,7 +241,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $service->answerCallbackQuery('my-bot-token', 'query-id-abc', 'Done!');
 
         Http::assertSent(
@@ -253,7 +253,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $result = $service->answerCallbackQuery('my-bot-token', 'query-id-abc');
 
         $this->assertTrue($result);
@@ -263,7 +263,7 @@ final class TelegramMessagingServiceTest extends TestCase
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => false], 400)]);
 
-        $service = new TelegramMessagingService;
+        $service = new MessagingService;
         $result = $service->answerCallbackQuery('my-bot-token', 'query-id-abc');
 
         $this->assertFalse($result);

@@ -9,12 +9,12 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use SensitiveParameter;
-use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Models\TelegramManager;
-use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\TelegramMessagingService;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Models\Manager;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\MessagingService;
 
-class TelegramWebhookController extends Controller
+class WebhookController extends Controller
 {
-    public function __construct(private readonly TelegramMessagingService $messagingService) {}
+    public function __construct(private readonly MessagingService $messagingService) {}
 
     public function handle(Request $request): JsonResponse
     {
@@ -50,7 +50,7 @@ class TelegramWebhookController extends Controller
         $from = is_array($message['from'] ?? null) ? $message['from'] : [];
         $telegramId = (string) ($from['id'] ?? '');
 
-        $manager = TelegramManager::where('telegram_id', $telegramId)->first();
+        $manager = Manager::where('telegram_id', $telegramId)->first();
         if (! $manager) {
             return;
         }
@@ -101,7 +101,7 @@ class TelegramWebhookController extends Controller
 
         $profileId = (int) $userId;
 
-        $manager = TelegramManager::where('telegram_id', $telegramId)
+        $manager = Manager::where('telegram_id', $telegramId)
             ->where('profile_id', $profileId)
             ->first();
 

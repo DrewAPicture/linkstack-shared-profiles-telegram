@@ -6,15 +6,15 @@ namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services;
 
 use Illuminate\Support\Facades\DB;
 use SensitiveParameter;
-use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Models\TelegramManager;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Models\Manager;
 
-class TelegramNotificationService
+class NotificationService
 {
-    public function __construct(private readonly TelegramMessagingService $messagingService) {}
+    public function __construct(private readonly MessagingService $messagingService) {}
 
     public function notifyModerators(int $profileId, int $linkId, string $link, string $title): void
     {
-        $managers = TelegramManager::where('profile_id', $profileId)->get();
+        $managers = Manager::where('profile_id', $profileId)->get();
         $botToken = $this->resolveToken($profileId);
 
         foreach ($managers as $manager) {
