@@ -1,0 +1,45 @@
+{
+  "name": "werdswords/linkstack-shared-profiles",
+  "description": "Telegram-authenticated shared profile management for LinkStack",
+  "type": "library",
+  "license": "MIT",
+  "require": {
+    "php": "^8.2",
+    "laravel/framework": "^10.0",
+    "socialiteproviders/telegram": "^4.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "WerdsWords\\LinkStack\\SharedProfiles\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "WerdsWords\\LinkStack\\SharedProfiles\\Tests\\": "tests/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "WerdsWords\\LinkStack\\SharedProfiles\\ServiceProvider"
+      ]
+    }
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.5",
+    "phpstan/phpstan": "^1.12",
+    "laravel/pint": "^1.0",
+    "larastan/larastan": "^2.0",
+    "orchestra/testbench": "^8.0"
+  },
+  "scripts": {
+    "test": "phpunit",
+    "analyse": "phpstan analyse",
+    "format": "pint",
+    "ci": [
+      "@test",
+      "@analyse",
+      "@format"
+    ]
+  }
+}
