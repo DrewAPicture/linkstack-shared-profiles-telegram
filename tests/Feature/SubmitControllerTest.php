@@ -13,6 +13,7 @@ use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use SensitiveParameter;
 use WerdsWords\LinkStack\SharedProfiles\Events\PendingLinkSubmitted;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderSetting;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers\SubmitController;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\ServiceProvider;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Tests\Support\Models\User;
@@ -67,10 +68,34 @@ final class SubmitControllerTest extends TestCase
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('telegram_bot_token')->nullable();
-            $table->string('telegram_group_chat_id')->nullable()->unique();
             $table->boolean('auto_approve')->nullable();
             $table->timestamps();
+        });
+
+        Schema::create('telegram_group_chats', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('profile_id');
+            $table->foreign('profile_id')->references('id')->on('users')->onDelete('cascade');
+            $table->string('chat_id')->unique();
+            $table->timestamp('created_at')->useCurrent();
+        });
+
+        Schema::create('provider_managers', function (Blueprint $table) {
+            $table->id();
+            $table->string('provider');
+            $table->string('external_id');
+            $table->unsignedBigInteger('profile_id');
+            $table->string('role')->default('moderator');
+            $table->string('added_by')->nullable();
+            $table->timestamp('created_at')->useCurrent();
+        });
+
+        Schema::create('provider_settings', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('profile_id');
+            $table->string('provider');
+            $table->text('settings');
+            $table->unique(['profile_id', 'provider']);
         });
 
         Schema::create('links', function (Blueprint $table) {
@@ -87,19 +112,11 @@ final class SubmitControllerTest extends TestCase
             $table->timestamps();
         });
 
-        Schema::create('telegram_managers', function (Blueprint $table) {
-            $table->id();
-            $table->string('telegram_id')->unique();
-            $table->unsignedBigInteger('profile_id');
-            $table->foreign('profile_id')->references('id')->on('users')->onDelete('cascade');
-            $table->enum('role', ['owner', 'moderator'])->default('moderator');
-            $table->unsignedBigInteger('added_by')->nullable();
-            $table->timestamp('created_at')->useCurrent();
-        });
-
         $this->beforeApplicationDestroyed(function () {
-            Schema::dropIfExists('telegram_managers');
             Schema::dropIfExists('links');
+            Schema::dropIfExists('provider_settings');
+            Schema::dropIfExists('provider_managers');
+            Schema::dropIfExists('telegram_group_chats');
             Schema::dropIfExists('users');
         });
     }
@@ -108,24 +125,28 @@ final class SubmitControllerTest extends TestCase
     // Helpers
     // -------------------------------------------------------------------------
 
-    private function createUser(?string $groupChatId = self::GROUP_CHAT_ID, ?string $botToken = null, ?bool $autoApprove = null): User
+    private function createUser(?bool $autoApprove = null, ?string $botToken = null): User
     {
-        return User::create(array_filter([
+        $user = User::create(array_filter([
             'name' => 'Test Profile',
             'email' => 'profile@example.com',
-            'telegram_group_chat_id' => $groupChatId,
-            'telegram_bot_token' => $botToken,
             'auto_approve' => $autoApprove,
         ], fn ($v) => $v !== null));
-    }
 
-    private function createManager(int $profileId, string $telegramId, string $role = 'moderator'): void
-    {
-        DB::table('telegram_managers')->insert([
-            'telegram_id' => $telegramId,
-            'profile_id' => $profileId,
-            'role' => $role,
+        DB::table('telegram_group_chats')->insert([
+            'profile_id' => $user->id,
+            'chat_id' => self::GROUP_CHAT_ID,
+            'created_at' => now(),
         ]);
+
+        if ($botToken !== null) {
+            ProviderSetting::updateOrCreate(
+                ['profile_id' => $user->id, 'provider' => 'telegram'],
+                ['settings' => ['bot_token' => $botToken]]
+            );
+        }
+
+        return $user;
     }
 
     /**

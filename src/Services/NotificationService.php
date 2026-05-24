@@ -4,23 +4,36 @@ declare(strict_types=1);
 
 namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services;
 
-use Illuminate\Support\Facades\DB;
-use SensitiveParameter;
-use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Models\Manager;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Contracts\NotifierContract;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderManager;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderSetting;
 
-class NotificationService
+class NotificationService implements NotifierContract
 {
     public function __construct(private readonly MessagingService $messagingService) {}
 
     public function notifyModerators(int $profileId, int $linkId, string $link, string $title): void
     {
-        $managers = Manager::where('profile_id', $profileId)->get();
-        $botToken = $this->resolveToken($profileId);
+        $managers = ProviderManager::forProvider('telegram')
+            ->where('profile_id', $profileId)
+            ->get();
+
+        $setting = ProviderSetting::forProvider('telegram')
+            ->where('profile_id', $profileId)
+            ->first();
+
+        $settings = $setting?->settings ?? [];
+        $rawToken = $settings['bot_token'] ?? null;
+
+        /** @var string $botToken */
+        $botToken = (is_string($rawToken) && $rawToken !== '')
+            ? $rawToken
+            : config('linkstack-shared-profiles-telegram.bot_token');
 
         foreach ($managers as $manager) {
             $this->messagingService->sendMessageWithKeyboard(
                 $botToken,
-                $manager->telegram_id,
+                $manager->external_id,
                 "New pending link:\n{$title}\n{$link}",
                 [[
                     ['text' => '✅ Approve', 'callback_data' => "approve:{$linkId}"],
@@ -28,17 +41,5 @@ class NotificationService
                 ]]
             );
         }
-    }
-
-    private function resolveToken(#[SensitiveParameter] int $profileId): string
-    {
-        $perProfile = DB::table('users')->where('id', $profileId)->value('telegram_bot_token');
-
-        /** @var string $token */
-        $token = is_string($perProfile) && $perProfile !== ''
-            ? $perProfile
-            : config('linkstack-shared-profiles-telegram.bot_token');
-
-        return $token;
     }
 }

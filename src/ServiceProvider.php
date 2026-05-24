@@ -2,16 +2,23 @@
 
 namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram;
 
-use Illuminate\Support\Facades\Event;
-use Illuminate\Support\ServiceProvider as BaseServiceProvider;
 use Laravel\Socialite\Contracts\Factory as Socialite;
 use SocialiteProviders\Telegram\Provider as TelegramProvider;
-use WerdsWords\LinkStack\SharedProfiles\Events\PendingLinkSubmitted;
+use WerdsWords\LinkStack\SharedProfiles\Providers\ServiceProvider as CoreProviderServiceProvider;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers\AuthController;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers\SubmitController;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers\WebhookController;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\MessagingService;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\NotificationService;
+use WerdsWords\LinkStack\SharedProfiles\ServiceProvider as CoreServiceProvider;
 
-class ServiceProvider extends BaseServiceProvider
+class ServiceProvider extends CoreProviderServiceProvider
 {
+    public function getProviderName(): string
+    {
+        return 'telegram';
+    }
+
     public function register(): void
     {
         $this->mergeConfigFrom(
@@ -38,20 +45,31 @@ class ServiceProvider extends BaseServiceProvider
 
         $this->loadRoutesFrom(__DIR__.'/../routes/telegram.php');
 
+        $this->registerInteractionRoute(
+            '/telegram-login',
+            [AuthController::class, 'initDataLogin'],
+            'linkstack-shared-profiles.telegram.initdata'
+        );
+
+        $this->registerInteractionRoute(
+            '/telegram/submit',
+            [SubmitController::class, 'store'],
+            'linkstack-shared-profiles.telegram.submit'
+        );
+
+        $this->registerInteractionRoute(
+            '/telegram/webhook',
+            [WebhookController::class, 'handle'],
+            'linkstack-shared-profiles.telegram.webhook'
+        );
+
         $this->app->make(Socialite::class)->extend(
             'telegram',
             fn ($app) => $app->make(TelegramProvider::class)
         );
 
-        $this->app->singleton(NotificationService::class, fn ($app) => new NotificationService($app->make(MessagingService::class)));
-
-        Event::listen(PendingLinkSubmitted::class, function (PendingLinkSubmitted $event): void {
-            $this->app->make(NotificationService::class)->notifyModerators(
-                $event->profileId,
-                $event->linkId,
-                $event->link,
-                $event->title,
-            );
-        });
+        CoreServiceProvider::registerNotifier(
+            new NotificationService($this->app->make(MessagingService::class))
+        );
     }
 }

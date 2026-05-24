@@ -15,6 +15,7 @@ use Mockery;
 use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use SensitiveParameter;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderSetting;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers\AuthController;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\ServiceProvider;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Tests\Support\Models\User;
@@ -71,22 +72,31 @@ final class AuthControllerTest extends TestCase
             $table->string('email')->unique();
             $table->string('password')->nullable();
             $table->string('remember_token')->nullable();
-            $table->string('telegram_bot_token')->nullable();
             $table->timestamps();
         });
 
-        Schema::create('telegram_managers', function (Blueprint $table) {
+        Schema::create('provider_managers', function (Blueprint $table) {
             $table->id();
-            $table->string('telegram_id')->unique();
+            $table->string('provider');
+            $table->string('external_id');
             $table->unsignedBigInteger('profile_id');
             $table->foreign('profile_id')->references('id')->on('users')->onDelete('cascade');
-            $table->enum('role', ['owner', 'moderator'])->default('moderator');
-            $table->unsignedBigInteger('added_by')->nullable();
+            $table->string('role')->default('moderator');
+            $table->string('added_by')->nullable();
             $table->timestamp('created_at')->useCurrent();
         });
 
+        Schema::create('provider_settings', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('profile_id');
+            $table->string('provider');
+            $table->text('settings');
+            $table->unique(['profile_id', 'provider']);
+        });
+
         $this->beforeApplicationDestroyed(function () {
-            Schema::dropIfExists('telegram_managers');
+            Schema::dropIfExists('provider_settings');
+            Schema::dropIfExists('provider_managers');
             Schema::dropIfExists('users');
         });
     }
@@ -95,21 +105,31 @@ final class AuthControllerTest extends TestCase
     // Helpers
     // -------------------------------------------------------------------------
 
-    private function createUser(?string $telegramBotToken = null): User
+    private function createUser(?string $botToken = null): User
     {
-        return User::create(array_filter([
+        $user = User::create([
             'name' => 'Test User',
             'email' => 'test@example.com',
-            'telegram_bot_token' => $telegramBotToken,
-        ], fn ($v) => $v !== null));
+        ]);
+
+        if ($botToken !== null) {
+            ProviderSetting::updateOrCreate(
+                ['profile_id' => $user->id, 'provider' => 'telegram'],
+                ['settings' => ['bot_token' => $botToken]]
+            );
+        }
+
+        return $user;
     }
 
     private function createManager(int $profileId, string $telegramId, string $role = 'moderator'): void
     {
-        DB::table('telegram_managers')->insert([
-            'telegram_id' => $telegramId,
+        DB::table('provider_managers')->insert([
+            'provider' => 'telegram',
+            'external_id' => $telegramId,
             'profile_id' => $profileId,
             'role' => $role,
+            'created_at' => now(),
         ]);
     }
 
