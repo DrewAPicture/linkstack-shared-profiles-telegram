@@ -1,54 +1,73 @@
 {
-  "name": "werdswords/linkstack-shared-profiles-telegram",
-  "description": "Telegram provider for werdswords/linkstack-shared-profiles",
-  "type": "library",
-  "license": "MIT",
-  "minimum-stability": "dev",
-  "prefer-stable": true,
-  "require": {
-    "php": "^8.2",
-    "laravel/framework": "^10.0",
-    "werdswords/linkstack-shared-profiles": "dev-main",
-    "socialiteproviders/telegram": "^4.0"
-  },
-  "repositories": [
-    {
-      "type": "vcs",
-      "url": "https://github.com/DrewAPicture/linkstack-shared-profiles"
+    "name": "werdswords/linkstack-shared-profiles-telegram",
+    "description": "Telegram provider for werdswords/linkstack-shared-profiles",
+    "type": "library",
+    "license": "MIT",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^10.0",
+        "werdswords/linkstack-shared-profiles": "dev-main",
+        "socialiteproviders/telegram": "^4.0"
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/DrewAPicture/linkstack-shared-profiles"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "WerdsWords\\LinkStack\\SharedProfiles\\Providers\\Telegram\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "WerdsWords\\LinkStack\\SharedProfiles\\Providers\\Telegram\\Tests\\": "tests/",
+            "Workbench\\App\\": "workbench/app/",
+            "Workbench\\Database\\Factories\\": "workbench/database/factories/",
+            "Workbench\\Database\\Seeders\\": "workbench/database/seeders/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "WerdsWords\\LinkStack\\SharedProfiles\\Providers\\Telegram\\ServiceProvider"
+            ]
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5",
+        "phpstan/phpstan": "^1.12",
+        "laravel/pint": "^1.0",
+        "larastan/larastan": "^2.0",
+        "orchestra/testbench": "^8.0"
+    },
+    "scripts": {
+        "test": "phpunit",
+        "analyse": "phpstan analyse",
+        "format": "pint",
+        "ci": [
+            "@test",
+            "@analyse",
+            "@format"
+        ],
+        "post-autoload-dump": [
+            "@clear",
+            "@prepare"
+        ],
+        "clear": "@php vendor/bin/testbench package:purge-skeleton --ansi",
+        "prepare": "@php vendor/bin/testbench package:discover --ansi",
+        "build": "@php vendor/bin/testbench workbench:build --ansi",
+        "serve": [
+            "Composer\\Config::disableProcessTimeout",
+            "@build",
+            "@php vendor/bin/testbench serve --ansi"
+        ],
+        "lint": [
+            "@php vendor/bin/pint --ansi",
+            "@php vendor/bin/phpstan analyse --verbose --ansi"
+        ]
     }
-  ],
-  "autoload": {
-    "psr-4": {
-      "WerdsWords\\LinkStack\\SharedProfiles\\Providers\\Telegram\\": "src/"
-    }
-  },
-  "autoload-dev": {
-    "psr-4": {
-      "WerdsWords\\LinkStack\\SharedProfiles\\Providers\\Telegram\\Tests\\": "tests/"
-    }
-  },
-  "extra": {
-    "laravel": {
-      "providers": [
-        "WerdsWords\\LinkStack\\SharedProfiles\\Providers\\Telegram\\ServiceProvider"
-      ]
-    }
-  },
-  "require-dev": {
-    "phpunit/phpunit": "^10.5",
-    "phpstan/phpstan": "^1.12",
-    "laravel/pint": "^1.0",
-    "larastan/larastan": "^2.0",
-    "orchestra/testbench": "^8.0"
-  },
-  "scripts": {
-    "test": "phpunit",
-    "analyse": "phpstan analyse",
-    "format": "pint",
-    "ci": [
-      "@test",
-      "@analyse",
-      "@format"
-    ]
-  }
 }

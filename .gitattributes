@@ -7,3 +7,5 @@ pint.json                export-ignore
 AGENTS.md                export-ignore
 CLAUDE.md                export-ignore
 CONTRIBUTING.md          export-ignore
+testbench.yaml           export-ignore
+workbench/               export-ignore
