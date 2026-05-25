@@ -68,6 +68,7 @@ final class WebhookControllerTest extends TestCase
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
+            $table->string('api_token', 64)->unique()->nullable();
             $table->timestamps();
         });
 

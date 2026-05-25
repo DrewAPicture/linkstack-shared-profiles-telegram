@@ -6,10 +6,12 @@ namespace Workbench\App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use WerdsWords\LinkStack\SharedProfiles\Concerns\HasApiToken;
+use WerdsWords\LinkStack\SharedProfiles\Contracts\ApiTokenableContract;
 
-class User extends Authenticatable
+class User extends Authenticatable implements ApiTokenableContract
 {
-    use HasFactory, Notifiable;
+    use HasApiToken, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -20,6 +22,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'api_token',
     ];
 
     /**

@@ -72,6 +72,7 @@ final class AuthControllerTest extends TestCase
             $table->string('email')->unique();
             $table->string('password')->nullable();
             $table->string('remember_token')->nullable();
+            $table->string('api_token', 64)->unique()->nullable();
             $table->timestamps();
         });
 

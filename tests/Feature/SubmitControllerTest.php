@@ -69,6 +69,7 @@ final class SubmitControllerTest extends TestCase
             $table->string('name');
             $table->string('email')->unique();
             $table->boolean('auto_approve')->nullable();
+            $table->string('api_token', 64)->unique()->nullable();
             $table->timestamps();
         });
 

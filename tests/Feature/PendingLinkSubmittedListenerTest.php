@@ -13,6 +13,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use WerdsWords\LinkStack\SharedProfiles\Events\PendingLinkSubmitted;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Contracts\NotifierContract;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\ServiceProvider;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Tests\Support\Models\User;
 use WerdsWords\LinkStack\SharedProfiles\ServiceProvider as CoreServiceProvider;
 
 #[CoversClass(ServiceProvider::class)]
@@ -38,6 +39,8 @@ final class PendingLinkSubmittedListenerTest extends TestCase
             'prefix' => '',
         ]);
 
+        $app['config']->set('auth.providers.users.model', User::class);
+
         $app['config']->set('services.telegram.client_id', 'test-bot-id');
         $app['config']->set('services.telegram.client_secret', 'test-bot-token');
         $app['config']->set('services.telegram.redirect', 'https://example.com/callback');
@@ -51,6 +54,7 @@ final class PendingLinkSubmittedListenerTest extends TestCase
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
+            $table->string('api_token', 64)->unique()->nullable();
             $table->timestamps();
         });
 
