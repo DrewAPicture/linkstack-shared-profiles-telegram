@@ -6,11 +6,9 @@ namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Tests\Unit;
 
 use Illuminate\Support\Facades\Http;
 use Laravel\Socialite\SocialiteServiceProvider;
-use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\ServiceProvider;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\MessagingService;
-use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Tests\Support\Models\User;
 use WerdsWords\LinkStack\SharedProfiles\ServiceProvider as CoreServiceProvider;
 
 #[CoversClass(MessagingService::class)]
@@ -27,7 +25,7 @@ final class MessagingServiceTest extends TestCase
 
     protected function defineEnvironment($app): void
     {
-        $app['config']->set('auth.providers.users.model', User::class);
+        parent::defineEnvironment($app);
 
         $app['config']->set('services.telegram.client_id', 'test-bot-id');
         $app['config']->set('services.telegram.client_secret', 'test-secret');
