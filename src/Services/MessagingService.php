@@ -47,6 +47,34 @@ class MessagingService
     }
 
     /**
+     * Send a text message with a single web_app inline button via the Telegram Bot API.
+     *
+     * @param  int|string  $chatId  Telegram chat ID
+     */
+    public function sendMessageWithWebAppButton(
+        #[SensitiveParameter] string $botToken,
+        int|string $chatId,
+        string $text,
+        string $buttonLabel,
+        string $appUrl
+    ): bool {
+        $response = Http::post(
+            self::API_BASE."/bot{$botToken}/sendMessage",
+            [
+                'chat_id' => $chatId,
+                'text' => $text,
+                'reply_markup' => [
+                    'inline_keyboard' => [[
+                        ['text' => $buttonLabel, 'web_app' => ['url' => $appUrl]],
+                    ]],
+                ],
+            ]
+        );
+
+        return $response->successful();
+    }
+
+    /**
      * Edit the text of a sent message and remove its inline keyboard.
      *
      * @param  int|string  $chatId  Telegram chat ID (numeric user ID or @username)

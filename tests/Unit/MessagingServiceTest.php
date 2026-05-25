@@ -160,6 +160,60 @@ final class MessagingServiceTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // sendMessageWithWebAppButton()
+    // -------------------------------------------------------------------------
+
+    public function testSendMessageWithWebAppButtonPostsToCorrectTelegramApiUrl(): void
+    {
+        Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
+
+        $service = new MessagingService;
+        $service->sendMessageWithWebAppButton('my-bot-token', '12345678', 'Pick one:', 'Open App', 'https://example.com/app');
+
+        Http::assertSent(
+            fn ($request) => $request->url() === 'https://api.telegram.org/botmy-bot-token/sendMessage'
+        );
+    }
+
+    public function testSendMessageWithWebAppButtonIncludesChatIdTextAndWebAppButton(): void
+    {
+        Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
+
+        $service = new MessagingService;
+        $service->sendMessageWithWebAppButton('my-bot-token', '12345678', 'Pick one:', 'Open App', 'https://example.com/app');
+
+        Http::assertSent(
+            fn ($request) => $request['chat_id'] === '12345678'
+                && $request['text'] === 'Pick one:'
+                && $request['reply_markup'] === [
+                    'inline_keyboard' => [[
+                        ['text' => 'Open App', 'web_app' => ['url' => 'https://example.com/app']],
+                    ]],
+                ]
+        );
+    }
+
+    public function testSendMessageWithWebAppButtonReturnsTrueOnSuccess(): void
+    {
+        Http::fake(['api.telegram.org/*' => Http::response(['ok' => true], 200)]);
+
+        $service = new MessagingService;
+        $result = $service->sendMessageWithWebAppButton('my-bot-token', '12345678', 'Pick one:', 'Open App', 'https://example.com/app');
+
+        $this->assertTrue($result);
+    }
+
+    public function testSendMessageWithWebAppButtonReturnsFalseOnApiError(): void
+    {
+        Http::fake(['api.telegram.org/*' => Http::response(['ok' => false], 400)]);
+
+        $service = new MessagingService;
+        $result = $service->sendMessageWithWebAppButton('my-bot-token', '12345678', 'Pick one:', 'Open App', 'https://example.com/app');
+
+        $this->assertFalse($result);
+    }
+
+    // -------------------------------------------------------------------------
     // editMessageText()
     // -------------------------------------------------------------------------
 
