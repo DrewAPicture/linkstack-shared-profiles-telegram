@@ -5945,12 +5945,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/DrewAPicture/linkstack-shared-profiles.git",
-                "reference": "558ef3aca3ac8171a57805ac92bc4f42d320695f"
+                "reference": "aa04328fc61b41c8a7c1cc25116a96f5fea5e836"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/DrewAPicture/linkstack-shared-profiles/zipball/558ef3aca3ac8171a57805ac92bc4f42d320695f",
-                "reference": "558ef3aca3ac8171a57805ac92bc4f42d320695f",
+                "url": "https://api.github.com/repos/DrewAPicture/linkstack-shared-profiles/zipball/aa04328fc61b41c8a7c1cc25116a96f5fea5e836",
+                "reference": "aa04328fc61b41c8a7c1cc25116a96f5fea5e836",
                 "shasum": ""
             },
             "require": {
@@ -6010,7 +6010,7 @@
                 "source": "https://github.com/DrewAPicture/linkstack-shared-profiles/tree/main",
                 "issues": "https://github.com/DrewAPicture/linkstack-shared-profiles/issues"
             },
-            "time": "2026-05-25T00:01:59+00:00"
+            "time": "2026-05-25T06:53:11+00:00"
         }
     ],
     "packages-dev": [

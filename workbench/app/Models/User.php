@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use WerdsWords\LinkStack\SharedProfiles\Concerns\HasApiToken;
-use WerdsWords\LinkStack\SharedProfiles\Contracts\ApiTokenableContract;
+use WerdsWords\LinkStack\SharedProfiles\Contracts\HasApiTokenContract;
 
-class User extends Authenticatable implements ApiTokenableContract
+class User extends Authenticatable implements HasApiTokenContract
 {
     use HasApiToken, HasFactory, Notifiable;
 

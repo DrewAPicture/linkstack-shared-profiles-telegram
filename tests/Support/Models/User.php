@@ -6,9 +6,9 @@ namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Tests\Support\M
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use WerdsWords\LinkStack\SharedProfiles\Concerns\HasApiToken;
-use WerdsWords\LinkStack\SharedProfiles\Contracts\ApiTokenableContract;
+use WerdsWords\LinkStack\SharedProfiles\Contracts\HasApiTokenContract;
 
-class User extends Authenticatable implements ApiTokenableContract
+class User extends Authenticatable implements HasApiTokenContract
 {
     use HasApiToken;
 
