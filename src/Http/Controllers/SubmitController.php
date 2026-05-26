@@ -53,8 +53,9 @@ class SubmitController extends Controller
         $chatId = $params['start_param'] ?? '';
 
         Log::channel('telegram-webhook')->info('Submit store', [
+            'init_data_raw' => $validated['init_data'],
             'init_data_length' => strlen($validated['init_data']),
-            'param_keys' => array_keys($params),
+            'parsed_pairs' => $params,
             'chat_id' => $chatId,
         ]);
 
