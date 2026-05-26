@@ -36,7 +36,7 @@ class WebhookController extends AbstractWebhookController
     protected function handleMessage(array $payload): void
     {
         $message = DataGetter::arrayFromArray($payload, 'message');
-        $text = DataGetter::stringFromArray($message, 'text');
+        $text = explode('@', DataGetter::stringFromArray($message, 'text'))[0];
 
         if ($text === '/auth') {
             $this->handleAuthCommand($message);
