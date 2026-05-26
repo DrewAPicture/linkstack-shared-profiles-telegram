@@ -151,8 +151,9 @@ final class SubmitControllerTest extends TestCase
     }
 
     /**
-     * Build a properly HMAC-signed initData string that includes a chat field,
-     * matching the payload Telegram injects when a Mini App is opened from a group.
+     * Build a properly HMAC-signed initData string with a start_param field,
+     * matching the payload Telegram injects when a Mini App is opened via a
+     * direct t.me link with a ?startapp= parameter.
      */
     private function buildValidInitData(
         string $chatId = self::GROUP_CHAT_ID,
@@ -164,9 +165,9 @@ final class SubmitControllerTest extends TestCase
         }
 
         $params = [
-            'auth_date' => (string) $authDate,
-            'chat' => json_encode(['id' => (int) $chatId, 'type' => 'supergroup', 'title' => 'Test Group']),
-            'user' => json_encode(['id' => 99999, 'first_name' => 'Contributor']),
+            'auth_date'   => (string) $authDate,
+            'start_param' => $chatId,
+            'user'        => json_encode(['id' => 99999, 'first_name' => 'Contributor']),
         ];
 
         ksort($params);
@@ -256,7 +257,7 @@ final class SubmitControllerTest extends TestCase
         $payload = $this->validPayload();
         $payload['init_data'] = http_build_query([
             'auth_date' => (string) time(),
-            'chat' => json_encode(['id' => (int) self::GROUP_CHAT_ID, 'type' => 'supergroup']),
+            'start_param' => self::GROUP_CHAT_ID,
             'user' => json_encode(['id' => 99999]),
             'hash' => 'deadbeef',
         ]);

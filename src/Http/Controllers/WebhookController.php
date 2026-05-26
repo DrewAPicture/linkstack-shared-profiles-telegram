@@ -126,7 +126,7 @@ class WebhookController extends AbstractWebhookController
             $botToken,
             $chatId,
             'Use the button below to submit a link to this profile.',
-            [[['text' => 'Submit a Link', 'url' => $appUrl]]]
+            [[['text' => 'Submit a Link', 'url' => $appUrl.'?startapp='.$chatId]]]
         );
 
         Log::channel('telegram-webhook')->info('Send result', ['sent' => $sent, 'chat_id' => $chatId]);

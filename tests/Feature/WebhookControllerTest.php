@@ -395,7 +395,7 @@ final class WebhookControllerTest extends TestCase
             ->once()
             ->withArgs(fn ($token, $chatId, $text, $keyboard) => isset($keyboard[0][0]['text'])
                 && $keyboard[0][0]['text'] === 'Submit a Link'
-                && ($keyboard[0][0]['url'] ?? null) === 'https://t.me/testbot/submit');
+                && ($keyboard[0][0]['url'] ?? null) === 'https://t.me/testbot/submit?startapp=-100987654321');
         $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->groupMessageUpdate('/setup'))->assertStatus(200);

@@ -49,11 +49,7 @@ class SubmitController extends Controller
             }
         }
 
-        $chatJson = $params['chat'] ?? '{}';
-
-        /** @var array{id?: int|string}|null $chatData */
-        $chatData = json_decode($chatJson, true);
-        $chatId = (string) ($chatData['id'] ?? '');
+        $chatId = $params['start_param'] ?? '';
 
         $rawProfileId = DB::table('telegram_group_chats')->where('chat_id', $chatId)->value('profile_id');
 
