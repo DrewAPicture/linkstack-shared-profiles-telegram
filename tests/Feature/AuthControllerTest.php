@@ -156,7 +156,7 @@ final class AuthControllerTest extends TestCase
             $params
         ));
 
-        $secret = hash_hmac('sha256', 'WebAppData', $signingToken, true);
+        $secret = hash_hmac('sha256', $signingToken, 'WebAppData', true);
         $hash = hash_hmac('sha256', $checkStr, $secret);
 
         return http_build_query([...$params, 'hash' => $hash]);

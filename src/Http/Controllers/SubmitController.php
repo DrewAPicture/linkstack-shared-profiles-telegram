@@ -80,7 +80,7 @@ class SubmitController extends Controller
             ? $rawToken
             : config('linkstack-shared-profiles-telegram.bot_token');
 
-        $secret = hash_hmac('sha256', 'WebAppData', $botToken, true);
+        $secret = hash_hmac('sha256', $botToken, 'WebAppData', true);
 
         $hash = $params['hash'] ?? '';
         unset($params['hash'], $params['signature']);

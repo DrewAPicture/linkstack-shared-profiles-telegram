@@ -103,7 +103,7 @@ class AuthController extends Controller
 
         $botToken = $this->resolveToken($manager->profile_id);
 
-        $secret = hash_hmac('sha256', 'WebAppData', $botToken, true);
+        $secret = hash_hmac('sha256', $botToken, 'WebAppData', true);
 
         $hash = $params['hash'] ?? '';
         unset($params['hash']);
