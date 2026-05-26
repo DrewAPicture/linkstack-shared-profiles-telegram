@@ -87,7 +87,7 @@ class SubmitController extends Controller
         ksort($params);
 
         $pairs = [];
-        foreach ($params as $k => $v) {
+        foreach (array_filter($params, fn($v) => $v !== '' && $v !== null) as $k => $v) {
             $pairs[] = "{$k}={$v}";
         }
         $checkStr = implode("\n", $pairs);
