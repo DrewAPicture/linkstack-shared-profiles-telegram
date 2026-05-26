@@ -12,6 +12,8 @@ use Laravel\Socialite\SocialiteServiceProvider;
 use Mockery;
 use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Exceptions\ChatAlreadyBoundException;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Exceptions\ManagerNotFoundException;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers\WebhookController;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\ServiceProvider;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\MessagingService;
@@ -91,6 +93,14 @@ final class WebhookControllerTest extends TestCase
             $table->unique(['profile_id', 'provider']);
         });
 
+        Schema::create('telegram_group_chats', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('profile_id');
+            $table->foreign('profile_id')->references('id')->on('users')->onDelete('cascade');
+            $table->string('chat_id')->unique();
+            $table->timestamp('created_at')->useCurrent();
+        });
+
         Schema::create('links', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
@@ -107,6 +117,7 @@ final class WebhookControllerTest extends TestCase
 
         $this->beforeApplicationDestroyed(function () {
             Schema::dropIfExists('links');
+            Schema::dropIfExists('telegram_group_chats');
             Schema::dropIfExists('provider_settings');
             Schema::dropIfExists('provider_managers');
             Schema::dropIfExists('users');
@@ -131,6 +142,32 @@ final class WebhookControllerTest extends TestCase
             'role' => 'moderator',
             'created_at' => now(),
         ]);
+    }
+
+    private function createOwner(int $profileId, string $telegramId): void
+    {
+        DB::table('provider_managers')->insert([
+            'provider' => 'telegram',
+            'external_id' => $telegramId,
+            'profile_id' => $profileId,
+            'role' => 'owner',
+            'created_at' => now(),
+        ]);
+    }
+
+    private function groupMessageUpdate(
+        string $text,
+        string $telegramId = '12345678',
+        string $chatId = '-100987654321'
+    ): array {
+        return [
+            'message' => [
+                'message_id' => 1,
+                'from' => ['id' => (int) $telegramId, 'username' => 'testuser'],
+                'chat' => ['id' => (int) $chatId, 'type' => 'supergroup'],
+                'text' => $text,
+            ],
+        ];
     }
 
     private function createLink(int $profileId, string $status = 'pending'): int
@@ -322,5 +359,238 @@ final class WebhookControllerTest extends TestCase
         $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->callbackUpdate('unknown:format'))->assertStatus(200);
+    }
+
+    // -------------------------------------------------------------------------
+    // handleMessage() — /setup command
+    // -------------------------------------------------------------------------
+
+    public function testSetupCommandFromOwnerInGroupRecordsGroupChat(): void
+    {
+        $user = $this->createUser();
+        $this->createOwner($user->id, '12345678');
+
+        $mock = Mockery::mock(MessagingService::class);
+        $mock->shouldReceive('sendMessageWithWebAppButton')->once()->andReturn(true);
+        $this->app->instance(MessagingService::class, $mock);
+
+        $this->postWebhook($this->groupMessageUpdate('/setup'))->assertStatus(200);
+
+        $this->assertDatabaseHas('telegram_group_chats', [
+            'profile_id' => $user->id,
+            'chat_id' => '-100987654321',
+        ]);
+    }
+
+    public function testSetupCommandFromOwnerInGroupSendsSubmitButton(): void
+    {
+        $user = $this->createUser();
+        $this->createOwner($user->id, '12345678');
+
+        $mock = Mockery::mock(MessagingService::class);
+        $mock->shouldReceive('sendMessageWithWebAppButton')
+            ->once()
+            ->withArgs(fn ($token, $chatId, $text, $label, $url) => $label === 'Submit a Link'
+                && str_contains($url, '/telegram-app/submit'));
+        $this->app->instance(MessagingService::class, $mock);
+
+        $this->postWebhook($this->groupMessageUpdate('/setup'))->assertStatus(200);
+    }
+
+    public function testSetupCommandFromModeratorIsIgnored(): void
+    {
+        $user = $this->createUser();
+        $this->createManager($user->id, '12345678');
+
+        $mock = Mockery::mock(MessagingService::class);
+        $mock->shouldReceive('sendMessageWithWebAppButton')->never();
+        $this->app->instance(MessagingService::class, $mock);
+
+        $this->postWebhook($this->groupMessageUpdate('/setup'))->assertStatus(200);
+
+        $this->assertDatabaseMissing('telegram_group_chats', ['profile_id' => $user->id]);
+    }
+
+    public function testSetupCommandFromUnknownUserIsIgnored(): void
+    {
+        $mock = Mockery::mock(MessagingService::class);
+        $mock->shouldReceive('sendMessageWithWebAppButton')->never();
+        $this->app->instance(MessagingService::class, $mock);
+
+        $this->postWebhook($this->groupMessageUpdate('/setup', '9999999'))->assertStatus(200);
+
+        $this->assertDatabaseEmpty('telegram_group_chats');
+    }
+
+    public function testSetupCommandInPrivateChatIsIgnored(): void
+    {
+        $user = $this->createUser();
+        $this->createOwner($user->id, '12345678');
+
+        $mock = Mockery::mock(MessagingService::class);
+        $mock->shouldReceive('sendMessageWithWebAppButton')->never();
+        $this->app->instance(MessagingService::class, $mock);
+
+        $this->postWebhook($this->messageUpdate('/setup'))->assertStatus(200);
+
+        $this->assertDatabaseMissing('telegram_group_chats', ['profile_id' => $user->id]);
+    }
+
+    public function testSetupCommandIsIdempotentForSameProfile(): void
+    {
+        $user = $this->createUser();
+        $this->createOwner($user->id, '12345678');
+
+        $mock = Mockery::mock(MessagingService::class);
+        $mock->shouldReceive('sendMessageWithWebAppButton')->twice()->andReturn(true);
+        $this->app->instance(MessagingService::class, $mock);
+
+        $this->postWebhook($this->groupMessageUpdate('/setup'))->assertStatus(200);
+        $this->postWebhook($this->groupMessageUpdate('/setup'))->assertStatus(200);
+
+        $this->assertSame(1, DB::table('telegram_group_chats')->count());
+    }
+
+    public function testSetupCommandIgnoredWhenChatBoundToDifferentProfile(): void
+    {
+        $userA = $this->createUser();
+        $userB = $this->createUser('b@example.com');
+        $this->createOwner($userA->id, '12345678');
+
+        DB::table('telegram_group_chats')->insert([
+            'profile_id' => $userB->id,
+            'chat_id' => '-100987654321',
+            'created_at' => now(),
+        ]);
+
+        $mock = Mockery::mock(MessagingService::class);
+        $mock->shouldReceive('sendMessageWithWebAppButton')->never();
+        $this->app->instance(MessagingService::class, $mock);
+
+        $this->postWebhook($this->groupMessageUpdate('/setup'))->assertStatus(200);
+
+        $this->assertSame(1, DB::table('telegram_group_chats')->count());
+    }
+
+    // -------------------------------------------------------------------------
+    // resolveManager() — direct unit tests via anonymous subclass
+    // -------------------------------------------------------------------------
+
+    public function testResolveManagerReturnsManagerForKnownOwner(): void
+    {
+        $user = $this->createUser();
+        $this->createOwner($user->id, '12345678');
+
+        $controller = new class($this->app->make(MessagingService::class)) extends WebhookController
+        {
+            public function exposeResolveManager(string $telegramId): \WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderManager
+            {
+                return $this->resolveManager($telegramId);
+            }
+        };
+
+        $manager = $controller->exposeResolveManager('12345678');
+
+        $this->assertSame($user->id, $manager->profile_id);
+    }
+
+    public function testResolveManagerThrowsForUnknownTelegramId(): void
+    {
+        $this->expectException(ManagerNotFoundException::class);
+
+        $controller = new class($this->app->make(MessagingService::class)) extends WebhookController
+        {
+            public function exposeResolveManager(string $telegramId): \WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderManager
+            {
+                return $this->resolveManager($telegramId);
+            }
+        };
+
+        $controller->exposeResolveManager('9999999');
+    }
+
+    public function testResolveManagerThrowsForNonOwner(): void
+    {
+        $user = $this->createUser();
+        $this->createManager($user->id, '12345678');
+
+        $this->expectException(ManagerNotFoundException::class);
+
+        $controller = new class($this->app->make(MessagingService::class)) extends WebhookController
+        {
+            public function exposeResolveManager(string $telegramId): \WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderManager
+            {
+                return $this->resolveManager($telegramId);
+            }
+        };
+
+        $controller->exposeResolveManager('12345678');
+    }
+
+    // -------------------------------------------------------------------------
+    // resolveGroupChat() — direct unit tests via anonymous subclass
+    // -------------------------------------------------------------------------
+
+    public function testResolveGroupChatReturnsNullWhenChatNotFound(): void
+    {
+        $controller = new class($this->app->make(MessagingService::class)) extends WebhookController
+        {
+            public function exposeResolveGroupChat(string $chatId, int $profileId): ?\stdClass
+            {
+                return $this->resolveGroupChat($chatId, $profileId);
+            }
+        };
+
+        $result = $controller->exposeResolveGroupChat('-100987654321', 1);
+
+        $this->assertNull($result);
+    }
+
+    public function testResolveGroupChatReturnsRecordWhenBoundToSameProfile(): void
+    {
+        $user = $this->createUser();
+
+        DB::table('telegram_group_chats')->insert([
+            'profile_id' => $user->id,
+            'chat_id' => '-100987654321',
+            'created_at' => now(),
+        ]);
+
+        $controller = new class($this->app->make(MessagingService::class)) extends WebhookController
+        {
+            public function exposeResolveGroupChat(string $chatId, int $profileId): ?\stdClass
+            {
+                return $this->resolveGroupChat($chatId, $profileId);
+            }
+        };
+
+        $record = $controller->exposeResolveGroupChat('-100987654321', $user->id);
+
+        $this->assertNotNull($record);
+        $this->assertSame((string) $user->id, (string) $record->profile_id);
+    }
+
+    public function testResolveGroupChatThrowsWhenBoundToDifferentProfile(): void
+    {
+        $userA = $this->createUser();
+        $userB = $this->createUser('b@example.com');
+
+        DB::table('telegram_group_chats')->insert([
+            'profile_id' => $userB->id,
+            'chat_id' => '-100987654321',
+            'created_at' => now(),
+        ]);
+
+        $this->expectException(ChatAlreadyBoundException::class);
+
+        $controller = new class($this->app->make(MessagingService::class)) extends WebhookController
+        {
+            public function exposeResolveGroupChat(string $chatId, int $profileId): ?\stdClass
+            {
+                return $this->resolveGroupChat($chatId, $profileId);
+            }
+        };
+
+        $controller->exposeResolveGroupChat('-100987654321', $userA->id);
     }
 }

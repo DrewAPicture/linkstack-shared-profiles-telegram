@@ -6,9 +6,13 @@ namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controller
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use WerdsWords\LinkStack\SharedProfiles\Helpers\DataGetter;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Controllers\AbstractWebhookController;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderManager;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderSetting;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Enums\ChatType;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Exceptions\ChatAlreadyBoundException;
+use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Exceptions\ManagerNotFoundException;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\MessagingService;
 
 class WebhookController extends AbstractWebhookController
@@ -31,16 +35,20 @@ class WebhookController extends AbstractWebhookController
     /** @param array<string, mixed> $payload */
     protected function handleMessage(array $payload): void
     {
-        /** @var array<string, mixed> $message */
-        $message = $payload['message'];
+        $message = DataGetter::arrayFromArray($payload, 'message');
+        $text = DataGetter::stringFromArray($message, 'text');
 
-        if (($message['text'] ?? '') !== '/auth') {
-            return;
+        if ($text === '/auth') {
+            $this->handleAuthCommand($message);
+        } elseif ($text === '/setup') {
+            $this->handleSetupCommand($message);
         }
+    }
 
-        /** @var array{id?: int|string, username?: string} $from */
-        $from = is_array($message['from'] ?? null) ? $message['from'] : [];
-        $telegramId = (string) ($from['id'] ?? '');
+    /** @param array<string, mixed> $message */
+    private function handleAuthCommand(array $message): void
+    {
+        $telegramId = DataGetter::stringFromArray($message, 'from.id');
 
         $manager = ProviderManager::forProvider('telegram')
             ->where('external_id', $telegramId)
@@ -52,7 +60,6 @@ class WebhookController extends AbstractWebhookController
 
         $loginUrl = config('app.url').'/telegram-auth/'.$manager->profile_id;
         $botToken = $this->resolveToken($manager->profile_id);
-
         /** @var string $appName */
         $appName = config('app.name', 'LinkStack');
         $buttonLabel = sprintf('Log in to %s', $appName);
@@ -63,6 +70,88 @@ class WebhookController extends AbstractWebhookController
             'Use the button below to log in to your LinkStack profile.',
             [[['text' => $buttonLabel, 'url' => $loginUrl]]]
         );
+    }
+
+    /** @param array<string, mixed> $message */
+    private function handleSetupCommand(array $message): void
+    {
+        // Only valid in group or supergroup chats — not private DMs or channels.
+        // tryFrom() returns null for unknown types, which falls through the in_array check naturally.
+        $chatType = ChatType::tryFrom(DataGetter::stringFromArray($message, 'chat.type'));
+        if (! in_array($chatType, [ChatType::Group, ChatType::SuperGroup], true)) {
+            return;
+        }
+
+        $telegramId = DataGetter::stringFromArray($message, 'from.id');
+        $chatId = DataGetter::stringFromArray($message, 'chat.id');
+
+        try {
+            $manager = $this->resolveManager($telegramId);
+            $existing = $this->resolveGroupChat($chatId, $manager->profile_id);
+        } catch (ManagerNotFoundException|ChatAlreadyBoundException) {
+            return;
+        }
+
+        if (! $existing) {
+            DB::table('telegram_group_chats')->insert([
+                'profile_id' => $manager->profile_id,
+                'chat_id' => $chatId,
+                'created_at' => now(),
+            ]);
+        }
+
+        $botToken = $this->resolveToken($manager->profile_id);
+        $appUrl = config('app.url').'/telegram-app/submit';
+
+        $this->messagingService->sendMessageWithWebAppButton(
+            $botToken,
+            $chatId,
+            'Use the button below to submit a link to this profile.',
+            'Submit a Link',
+            $appUrl
+        );
+    }
+
+    /**
+     * Resolve the owner ProviderManager for the given Telegram user ID.
+     *
+     * @throws ManagerNotFoundException
+     */
+    protected function resolveManager(string $telegramId): ProviderManager
+    {
+        $manager = ProviderManager::forProvider('telegram')
+            ->where('external_id', $telegramId)
+            ->first();
+
+        if (! $manager || ! $manager->isOwner()) {
+            throw new ManagerNotFoundException(
+                "No owner manager found for Telegram ID {$telegramId}."
+            );
+        }
+
+        return $manager;
+    }
+
+    /**
+     * Look up the telegram_group_chats record for the given chat.
+     *
+     * Returns the record if already bound to this profile (idempotent re-setup),
+     * null if never set up, or throws if bound to a different profile.
+     *
+     * @throws ChatAlreadyBoundException
+     */
+    protected function resolveGroupChat(string $chatId, int $profileId): ?\stdClass
+    {
+        /** @var \stdClass|null $record */
+        $record = DB::table('telegram_group_chats')->where('chat_id', $chatId)->first();
+
+        if ($record !== null && (int) $record->profile_id !== $profileId) {
+            throw new ChatAlreadyBoundException(
+                "Chat {$chatId} is already bound to a different profile."
+            );
+        }
+
+        return $record;
     }
 
     /** @param array<string, mixed> $payload */
