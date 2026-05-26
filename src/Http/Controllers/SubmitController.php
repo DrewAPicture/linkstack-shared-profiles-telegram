@@ -53,9 +53,8 @@ class SubmitController extends Controller
         $chatId = $params['start_param'] ?? '';
 
         Log::channel('telegram-webhook')->info('Submit store', [
-            'init_data_raw' => $validated['init_data'],
             'init_data_length' => strlen($validated['init_data']),
-            'parsed_pairs' => $params,
+            'param_keys' => array_keys($params),
             'chat_id' => $chatId,
         ]);
 
@@ -93,15 +92,6 @@ class SubmitController extends Controller
         }
         $checkStr = implode("\n", $pairs);
         $computed = hash_hmac('sha256', $checkStr, $secret);
-
-        Log::channel('telegram-webhook')->info('HMAC detail', [
-            'using_per_profile_token' => $rawToken !== null,
-            'token_prefix' => substr($botToken, 0, 8),
-            'check_str' => $checkStr,
-            'computed' => $computed,
-            'received' => $hash,
-            'match' => hash_equals($computed, $hash),
-        ]);
 
         if (! hash_equals($computed, $hash)) {
             return response()->json(['error' => 'Invalid signature'], 403);
