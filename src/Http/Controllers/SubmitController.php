@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use WerdsWords\LinkStack\SharedProfiles\Events\PendingLinkSubmitted;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderSetting;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Support\AuthReplayGuard;
@@ -51,7 +52,15 @@ class SubmitController extends Controller
 
         $chatId = $params['start_param'] ?? '';
 
+        Log::channel('telegram-webhook')->info('Submit store', [
+            'init_data_length' => strlen($validated['init_data']),
+            'param_keys' => array_keys($params),
+            'chat_id' => $chatId,
+        ]);
+
         $rawProfileId = DB::table('telegram_group_chats')->where('chat_id', $chatId)->value('profile_id');
+
+        Log::channel('telegram-webhook')->info('Profile lookup', ['profile_id' => $rawProfileId]);
 
         if (! is_numeric($rawProfileId)) {
             abort(404);
@@ -83,6 +92,8 @@ class SubmitController extends Controller
         }
         $checkStr = implode("\n", $pairs);
         $computed = hash_hmac('sha256', $checkStr, $secret);
+
+        Log::channel('telegram-webhook')->info('HMAC check', ['match' => hash_equals($computed, $hash)]);
 
         if (! hash_equals($computed, $hash)) {
             return response()->json(['error' => 'Invalid signature'], 403);
