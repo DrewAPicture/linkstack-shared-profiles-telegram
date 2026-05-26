@@ -114,18 +114,21 @@ class WebhookController extends AbstractWebhookController
                 'chat_id' => $chatId,
                 'created_at' => now(),
             ]);
+            Log::channel('telegram-webhook')->info('Group chat recorded', ['chat_id' => $chatId]);
         }
 
         $botToken = $this->resolveToken($manager->profile_id);
         $appUrl = config('app.url').'/telegram-app/submit';
 
-        $this->messagingService->sendMessageWithWebAppButton(
+        $sent = $this->messagingService->sendMessageWithWebAppButton(
             $botToken,
             $chatId,
             'Use the button below to submit a link to this profile.',
             'Submit a Link',
             $appUrl
         );
+
+        Log::channel('telegram-webhook')->info('Send result', ['sent' => $sent, 'chat_id' => $chatId]);
     }
 
     /**
