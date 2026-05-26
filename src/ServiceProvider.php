@@ -3,6 +3,7 @@
 namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram;
 
 use Laravel\Socialite\Contracts\Factory as Socialite;
+use SocialiteProviders\Manager\Config as SocialiteConfig;
 use SocialiteProviders\Telegram\Provider as TelegramProvider;
 use WerdsWords\LinkStack\SharedProfiles\Providers\ServiceProvider as CoreProviderServiceProvider;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers\AuthController;
@@ -63,9 +64,29 @@ class ServiceProvider extends CoreProviderServiceProvider
             'linkstack-shared-profiles.telegram.webhook'
         );
 
-        $this->app->make(Socialite::class)->extend(
+        /** @var \Laravel\Socialite\SocialiteManager $socialiteManager */
+        $socialiteManager = $this->app->make(Socialite::class);
+        $socialiteManager->extend(
             'telegram',
-            fn ($app) => $app->make(TelegramProvider::class)
+            function ($app) use ($socialiteManager) {
+                $raw = (array) config('services.telegram', []);
+
+                /** @var TelegramProvider $provider */
+                $provider = $socialiteManager->buildProvider(TelegramProvider::class, $raw);
+                $clientId = $raw['client_id'] ?? '';
+                $clientSecret = $raw['client_secret'] ?? '';
+                $redirect = $raw['redirect'] ?? '';
+                $bot = $raw['bot'] ?? '';
+
+                $provider->setConfig(new SocialiteConfig(
+                    is_string($clientId) ? $clientId : '',
+                    is_string($clientSecret) ? $clientSecret : '',
+                    is_string($redirect) ? $redirect : '',
+                    ['bot' => is_string($bot) ? $bot : ''],
+                ));
+
+                return $provider;
+            }
         );
 
         CoreServiceProvider::registerNotifier(

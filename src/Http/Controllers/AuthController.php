@@ -155,8 +155,12 @@ class AuthController extends Controller
     private function applySocialiteConfig(int $profileId): void
     {
         $botToken = $this->resolveToken($profileId);
+        $rawBotName = config('linkstack-shared-profiles-telegram.bot_name', '');
+        $botName = is_string($rawBotName) ? $rawBotName : '';
 
+        Config::set('services.telegram.client_id', $botName);
         Config::set('services.telegram.client_secret', $botToken);
+        Config::set('services.telegram.bot', $botName);
         Config::set(
             'services.telegram.redirect',
             route('linkstack-shared-profiles.telegram.callback', ['profileId' => $profileId])
