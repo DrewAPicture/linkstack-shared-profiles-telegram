@@ -26,6 +26,14 @@ class ServiceProvider extends CoreProviderServiceProvider
             __DIR__.'/../config/linkstack-shared-profiles-telegram.php', 'linkstack-shared-profiles-telegram'
         );
 
+        /** @var \Illuminate\Config\Repository $config */
+        $config = $this->app->make('config');
+        $config->set('logging.channels.telegram-webhook', [
+            'driver' => 'single',
+            'path' => storage_path('logs/telegram-webhook.log'),
+            'level' => 'debug',
+        ]);
+
         $this->app->singleton(MessagingService::class, fn () => new MessagingService);
     }
 

@@ -6,6 +6,7 @@ namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controller
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use WerdsWords\LinkStack\SharedProfiles\Helpers\DataGetter;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Controllers\AbstractWebhookController;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderManager;
@@ -22,8 +23,11 @@ class WebhookController extends AbstractWebhookController
     protected function verifySignature(Request $request): bool
     {
         $secret = config('linkstack-shared-profiles-telegram.webhook_secret');
+        $valid = $request->header('X-Telegram-Bot-Api-Secret-Token') === $secret;
 
-        return $request->header('X-Telegram-Bot-Api-Secret-Token') === $secret;
+        Log::channel('telegram-webhook')->info('Signature check', ['valid' => $valid]);
+
+        return $valid;
     }
 
     /** @param array<string, mixed> $payload */
@@ -37,6 +41,8 @@ class WebhookController extends AbstractWebhookController
     {
         $message = DataGetter::arrayFromArray($payload, 'message');
         $text = explode('@', DataGetter::stringFromArray($message, 'text'))[0];
+
+        Log::channel('telegram-webhook')->info('Message received', ['command' => $text]);
 
         if ($text === '/auth') {
             $this->handleAuthCommand($message);
@@ -75,20 +81,30 @@ class WebhookController extends AbstractWebhookController
     /** @param array<string, mixed> $message */
     private function handleSetupCommand(array $message): void
     {
-        // Only valid in group or supergroup chats — not private DMs or channels.
-        // tryFrom() returns null for unknown types, which falls through the in_array check naturally.
         $chatType = ChatType::tryFrom(DataGetter::stringFromArray($message, 'chat.type'));
-        if (! in_array($chatType, [ChatType::Group, ChatType::SuperGroup], true)) {
-            return;
-        }
-
         $telegramId = DataGetter::stringFromArray($message, 'from.id');
         $chatId = DataGetter::stringFromArray($message, 'chat.id');
+
+        Log::channel('telegram-webhook')->info('Setup command', [
+            'chat_type' => $chatType?->value,
+            'telegram_id' => $telegramId,
+            'chat_id' => $chatId,
+        ]);
+
+        // Only valid in group or supergroup chats — not private DMs or channels.
+        // tryFrom() returns null for unknown types, which falls through the in_array check naturally.
+        if (! in_array($chatType, [ChatType::Group, ChatType::SuperGroup], true)) {
+            Log::channel('telegram-webhook')->warning('Setup ignored: wrong chat type');
+
+            return;
+        }
 
         try {
             $manager = $this->resolveManager($telegramId);
             $existing = $this->resolveGroupChat($chatId, $manager->profile_id);
-        } catch (ManagerNotFoundException|ChatAlreadyBoundException) {
+        } catch (ManagerNotFoundException|ChatAlreadyBoundException $e) {
+            Log::channel('telegram-webhook')->warning('Setup halted', ['reason' => $e->getMessage()]);
+
             return;
         }
 
