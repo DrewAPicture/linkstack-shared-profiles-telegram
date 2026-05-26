@@ -60,7 +60,8 @@ class WebhookController extends AbstractWebhookController
 
         $loginUrl = config('app.url').'/telegram-auth/'.$manager->profile_id;
         $botToken = $this->resolveToken($manager->profile_id);
-        $appName = (string) config('app.name', 'LinkStack');
+        /** @var string $appName */
+        $appName = config('app.name', 'LinkStack');
         $buttonLabel = sprintf('Log in to %s', $appName);
 
         $this->messagingService->sendMessageWithKeyboard(
@@ -141,6 +142,7 @@ class WebhookController extends AbstractWebhookController
      */
     protected function resolveGroupChat(string $chatId, int $profileId): ?\stdClass
     {
+        /** @var \stdClass|null $record */
         $record = DB::table('telegram_group_chats')->where('chat_id', $chatId)->first();
 
         if ($record !== null && (int) $record->profile_id !== $profileId) {
