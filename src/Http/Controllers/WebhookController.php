@@ -118,14 +118,15 @@ class WebhookController extends AbstractWebhookController
         }
 
         $botToken = $this->resolveToken($manager->profile_id);
-        $appUrl = config('app.url').'/telegram-app/submit';
 
-        $sent = $this->messagingService->sendMessageWithWebAppButton(
+        /** @var string $appUrl */
+        $appUrl = config('linkstack-shared-profiles-telegram.app_url', '');
+
+        $sent = $this->messagingService->sendMessageWithKeyboard(
             $botToken,
             $chatId,
             'Use the button below to submit a link to this profile.',
-            'Submit a Link',
-            $appUrl
+            [[['text' => 'Submit a Link', 'url' => $appUrl]]]
         );
 
         Log::channel('telegram-webhook')->info('Send result', ['sent' => $sent, 'chat_id' => $chatId]);

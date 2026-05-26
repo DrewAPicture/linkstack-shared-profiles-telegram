@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Tests\Feature;
 
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Testing\TestResponse;
@@ -371,7 +372,7 @@ final class WebhookControllerTest extends TestCase
         $this->createOwner($user->id, '12345678');
 
         $mock = Mockery::mock(MessagingService::class);
-        $mock->shouldReceive('sendMessageWithWebAppButton')->once()->andReturn(true);
+        $mock->shouldReceive('sendMessageWithKeyboard')->once()->andReturn(true);
         $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->groupMessageUpdate('/setup'))->assertStatus(200);
@@ -387,11 +388,14 @@ final class WebhookControllerTest extends TestCase
         $user = $this->createUser();
         $this->createOwner($user->id, '12345678');
 
+        Config::set('linkstack-shared-profiles-telegram.app_url', 'https://t.me/testbot/submit');
+
         $mock = Mockery::mock(MessagingService::class);
-        $mock->shouldReceive('sendMessageWithWebAppButton')
+        $mock->shouldReceive('sendMessageWithKeyboard')
             ->once()
-            ->withArgs(fn ($token, $chatId, $text, $label, $url) => $label === 'Submit a Link'
-                && str_contains($url, '/telegram-app/submit'));
+            ->withArgs(fn ($token, $chatId, $text, $keyboard) => isset($keyboard[0][0]['text'])
+                && $keyboard[0][0]['text'] === 'Submit a Link'
+                && ($keyboard[0][0]['url'] ?? null) === 'https://t.me/testbot/submit');
         $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->groupMessageUpdate('/setup'))->assertStatus(200);
@@ -403,7 +407,7 @@ final class WebhookControllerTest extends TestCase
         $this->createManager($user->id, '12345678');
 
         $mock = Mockery::mock(MessagingService::class);
-        $mock->shouldReceive('sendMessageWithWebAppButton')->never();
+        $mock->shouldReceive('sendMessageWithKeyboard')->never();
         $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->groupMessageUpdate('/setup'))->assertStatus(200);
@@ -414,7 +418,7 @@ final class WebhookControllerTest extends TestCase
     public function testSetupCommandFromUnknownUserIsIgnored(): void
     {
         $mock = Mockery::mock(MessagingService::class);
-        $mock->shouldReceive('sendMessageWithWebAppButton')->never();
+        $mock->shouldReceive('sendMessageWithKeyboard')->never();
         $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->groupMessageUpdate('/setup', '9999999'))->assertStatus(200);
@@ -428,7 +432,7 @@ final class WebhookControllerTest extends TestCase
         $this->createOwner($user->id, '12345678');
 
         $mock = Mockery::mock(MessagingService::class);
-        $mock->shouldReceive('sendMessageWithWebAppButton')->never();
+        $mock->shouldReceive('sendMessageWithKeyboard')->never();
         $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->messageUpdate('/setup'))->assertStatus(200);
@@ -442,7 +446,7 @@ final class WebhookControllerTest extends TestCase
         $this->createOwner($user->id, '12345678');
 
         $mock = Mockery::mock(MessagingService::class);
-        $mock->shouldReceive('sendMessageWithWebAppButton')->twice()->andReturn(true);
+        $mock->shouldReceive('sendMessageWithKeyboard')->twice()->andReturn(true);
         $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->groupMessageUpdate('/setup'))->assertStatus(200);
@@ -464,7 +468,7 @@ final class WebhookControllerTest extends TestCase
         ]);
 
         $mock = Mockery::mock(MessagingService::class);
-        $mock->shouldReceive('sendMessageWithWebAppButton')->never();
+        $mock->shouldReceive('sendMessageWithKeyboard')->never();
         $this->app->instance(MessagingService::class, $mock);
 
         $this->postWebhook($this->groupMessageUpdate('/setup'))->assertStatus(200);
