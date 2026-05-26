@@ -165,9 +165,9 @@ final class SubmitControllerTest extends TestCase
         }
 
         $params = [
-            'auth_date'   => (string) $authDate,
+            'auth_date' => (string) $authDate,
             'start_param' => $chatId,
-            'user'        => json_encode(['id' => 99999, 'first_name' => 'Contributor']),
+            'user' => json_encode(['id' => 99999, 'first_name' => 'Contributor']),
         ];
 
         ksort($params);
