@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
-use WerdsWords\LinkStack\SharedProfiles\Concerns\CanGetStringFromArray;
+use WerdsWords\LinkStack\SharedProfiles\Helpers\DataGetter;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Controllers\AbstractWebhookController;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderManager;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderSetting;
@@ -18,8 +17,6 @@ use WerdsWords\LinkStack\SharedProfiles\Providers\Telegram\Services\MessagingSer
 
 class WebhookController extends AbstractWebhookController
 {
-    use CanGetStringFromArray;
-
     public function __construct(private readonly MessagingService $messagingService) {}
 
     protected function verifySignature(Request $request): bool
@@ -38,9 +35,8 @@ class WebhookController extends AbstractWebhookController
     /** @param array<string, mixed> $payload */
     protected function handleMessage(array $payload): void
     {
-        /** @var array<string, mixed> $message */
-        $message = Arr::get($payload, 'message', []);
-        $text = static::get($message, 'text');
+        $message = DataGetter::arrayFromArray($payload, 'message');
+        $text = DataGetter::stringFromArray($message, 'text');
 
         if ($text === '/auth') {
             $this->handleAuthCommand($message);
@@ -52,7 +48,7 @@ class WebhookController extends AbstractWebhookController
     /** @param array<string, mixed> $message */
     private function handleAuthCommand(array $message): void
     {
-        $telegramId = static::get($message, 'from.id');
+        $telegramId = DataGetter::stringFromArray($message, 'from.id');
 
         $manager = ProviderManager::forProvider('telegram')
             ->where('external_id', $telegramId)
@@ -80,13 +76,13 @@ class WebhookController extends AbstractWebhookController
     {
         // Only valid in group or supergroup chats — not private DMs or channels.
         // tryFrom() returns null for unknown types, which falls through the in_array check naturally.
-        $chatType = ChatType::tryFrom(static::get($message, 'chat.type'));
+        $chatType = ChatType::tryFrom(DataGetter::stringFromArray($message, 'chat.type'));
         if (! in_array($chatType, [ChatType::Group, ChatType::SuperGroup], true)) {
             return;
         }
 
-        $telegramId = static::get($message, 'from.id');
-        $chatId = static::get($message, 'chat.id');
+        $telegramId = DataGetter::stringFromArray($message, 'from.id');
+        $chatId = DataGetter::stringFromArray($message, 'chat.id');
 
         try {
             $manager = $this->resolveManager($telegramId);
