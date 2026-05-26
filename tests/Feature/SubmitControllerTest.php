@@ -165,9 +165,10 @@ final class SubmitControllerTest extends TestCase
         }
 
         $params = [
-            'auth_date' => (string) $authDate,
+            'auth_date'  => (string) $authDate,
+            'signature'  => 'test-signature',
             'start_param' => $chatId,
-            'user' => json_encode(['id' => 99999, 'first_name' => 'Contributor']),
+            'user'       => json_encode(['id' => 99999, 'first_name' => 'Contributor']),
         ];
 
         ksort($params);
@@ -288,12 +289,11 @@ final class SubmitControllerTest extends TestCase
     {
         $this->createUser();
 
-        // Bot API 7.2+ includes a 'signature' field in initData that must be
-        // excluded from the HMAC check string (same as 'hash').
-        $initData = $this->buildValidInitData().'&signature=ed25519fakesig';
-
+        // Bot API 7.2+ includes a 'signature' field in initData. It is part of
+        // the HMAC check string (not excluded like 'hash'), so buildValidInitData()
+        // includes it when computing the hash.
         $this->postJson('/telegram/submit', [
-            'init_data' => $initData,
+            'init_data' => $this->buildValidInitData(),
             'link' => 'https://twitter.com/example',
             'title' => 'My Twitter',
         ])->assertStatus(201);
