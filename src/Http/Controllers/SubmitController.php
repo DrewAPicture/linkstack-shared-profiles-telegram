@@ -83,7 +83,7 @@ class SubmitController extends Controller
         $secret = hash_hmac('sha256', 'WebAppData', $botToken, true);
 
         $hash = $params['hash'] ?? '';
-        unset($params['hash']);
+        unset($params['hash'], $params['signature']);
         ksort($params);
 
         $pairs = [];

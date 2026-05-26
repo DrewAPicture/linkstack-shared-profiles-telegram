@@ -281,6 +281,25 @@ final class SubmitControllerTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // store() — signature field (Bot API 7.2+)
+    // -------------------------------------------------------------------------
+
+    public function testStoreAcceptsInitDataWithSignatureField(): void
+    {
+        $this->createUser();
+
+        // Bot API 7.2+ includes a 'signature' field in initData that must be
+        // excluded from the HMAC check string (same as 'hash').
+        $initData = $this->buildValidInitData().'&signature=ed25519fakesig';
+
+        $this->postJson('/telegram/submit', [
+            'init_data' => $initData,
+            'link' => 'https://twitter.com/example',
+            'title' => 'My Twitter',
+        ])->assertStatus(201);
+    }
+
+    // -------------------------------------------------------------------------
     // store() — link insertion
     // -------------------------------------------------------------------------
 
