@@ -11,7 +11,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Laravel\Socialite\Facades\Socialite;
-use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderManager;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Models\ProviderSetting;
 use WerdsWords\LinkStack\SharedProfiles\Providers\Support\AuthReplayGuard;
@@ -24,11 +24,19 @@ class AuthController extends Controller
      * The profileId is a users.id — encoding it in the URL keeps the callback
      * stateless so we can resolve the right bot token without session storage.
      */
-    public function redirect(int $profileId): SymfonyRedirectResponse
+    public function redirect(int $profileId): SymfonyResponse
     {
         $this->applySocialiteConfig($profileId);
 
-        return Socialite::driver('telegram')->redirect();
+        /** @var mixed $result */
+        $result = Socialite::driver('telegram')->redirect();
+
+        if (is_string($result)) {
+            return new SymfonyResponse($result, 200, ['Content-Type' => 'text/html']);
+        }
+
+        /** @var SymfonyResponse $result */
+        return $result;
     }
 
     /**
